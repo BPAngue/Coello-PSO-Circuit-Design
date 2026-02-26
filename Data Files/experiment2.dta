@@ -1,0 +1,33 @@
+4 ; number of inputs
+1 ; number of outputs
+1 ; output for 0000
+1 ; output for 0001
+0 ; output for 0010
+1 ; output for 0011
+0 ; output for 0100
+0 ; output for 0101
+1 ; output for 0110
+1 ; output for 0111
+1 ; output for 1000
+0 ; output for 1001
+1 ; output for 1010
+0 ; output for 1011
+0 ; output for 1100
+1 ; output for 1101
+0 ; output for 1110
+0 ; output for 1111
+200 ; population size
+1000 ; number of generations
+20 ; number of runs
+3 ; neighborhood size
+2.0 ; phi1
+2.0 ; phi2
+4.0 ; vMax
+2 ; mutation percent
+2 ; representation (2 = binary, 1 = integer A, 0 = integer B)
+5 ; number of gates available
+10 ; cardinality
+5 ; matrix rows
+5 ; matrix cols
+resultGen2 ; filename prefix for per-generation stats
+resultCorr2 ; filename prefix for per-run stats
