@@ -9,7 +9,11 @@ Compile the program with all of the needed header files:
 
 ```gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm```
 
-If the previous line does not work, use the following line instead:
+## For C++ Rendition of the Code
+
+```g++ -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp -lm```
+
+If you encounter common linker errors, add -fcommon flag.
 
 ## For Translated Code
 
@@ -18,6 +22,10 @@ If the previous line does not work, use the following line instead:
 ## For Original Coello Code
 
 ```gcc -fcommon -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm```
+
+## For C++ Rendition of the Code
+
+```g++ -fcommon -o psomatrixcircuit psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp -lm```
 
 Run the program with the input data
 
