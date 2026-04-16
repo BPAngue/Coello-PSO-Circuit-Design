@@ -123,6 +123,8 @@ unsigned loadParameters(char *finput)
         printf("\nError: could not load data file '%s'\n", finput);
 		return 0; 
 	}
+    
+    printf("Currently loading parameters!\n");
 
     strcpy(nfInput, finput);                 /* Input filename */
     loadTT(input);                           /* Load truth table */
