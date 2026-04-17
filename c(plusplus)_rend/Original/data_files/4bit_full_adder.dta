@@ -523,7 +523,7 @@
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
-17 ; matrix rows
-17 ; matrix cols
+20 ; matrix rows
+20 ; matrix cols
 resultGen1 ; filename prefix for per-generation stats
 resultCorr1 ; filename prefix for per-run stats
