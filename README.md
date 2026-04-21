@@ -11,7 +11,9 @@ Compile the program with all of the needed header files:
 
 ## For C++ Rendition of the Code
 
-```g++ -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp -lm```
+```g++ -O2 -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp```
+
+```g++ -std=c++17 -O3 -DNDEBUG -march=native -ffast-math -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp```
 
 If you encounter common linker errors, add -fcommon flag.
 
@@ -22,10 +24,6 @@ If you encounter common linker errors, add -fcommon flag.
 ## For Original Coello Code
 
 ```gcc -fcommon -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm```
-
-## For C++ Rendition of the Code
-
-```g++ -fcommon -o psomatrixcircuit psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp -lm```
 
 Run the program with the input data
 
