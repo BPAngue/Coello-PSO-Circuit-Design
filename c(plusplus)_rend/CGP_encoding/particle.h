@@ -40,11 +40,6 @@ public:
     unsigned numEqual   = 0;    /* Outputs matching the target truth table */
     double   fitness    = 0.0;  /* Particle fitness */
 
-    /* IPSO: per-particle acceleration coefficient (Yang et al. 2020)
-     * Each particle gets its own ci based on its fitness rank,
-     * replacing the fixed phi1/phi2 used in standard PSO.        */
-    double   ci         = 2.0;  /* Default: midpoint of [c1, c2] */
-
     Particle() = default;
     explicit Particle(unsigned nAllele)
         : vi(nAllele, 0.0), chromX(nAllele, 0u) {}

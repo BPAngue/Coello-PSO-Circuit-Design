@@ -205,13 +205,12 @@ void Swarm::pSwarm(unsigned run)
     std::string fileGen;
     runFileName(run, fileGen);
 
-    initPopulationEntropy();   /* IPSO: diversity-preserving initialisation */
+    initPopulation();
     runHeader(fileGen, seed, *this);
 
     for (unsigned gen = 0; gen < nGen; ++gen) {
         initStatistics(Gen);
         evaluatePopulation(gen);
-        updateAccelerationCoefficients();  /* IPSO: rank-based ci per particle */
         runInfo(fileGen, gen);
         PSOAlgorithm(gen);
         mutation();
@@ -226,7 +225,7 @@ void Swarm::runFileName(unsigned run, std::string& outName) const
     outName = nfGen + (run == 0 ? "0" : std::to_string(run)) + ".csv";
 }
 
-/* Generate the initial random population (kept for reference) */
+/* Generate the initial random population */
 void Swarm::initPopulation()
 {
     for (unsigned i = 0; i < tPop; ++i)
@@ -234,132 +233,6 @@ void Swarm::initPopulation()
             population[i].chromX[j] = (representation == BINARY)
                 ? flip(0.5)
                 : rndIR(lInf[j], (lSup[j] + 1) * cardinality) % (lSup[j] + 1);
-}
-
-/* -------------------------------------------------------
- * IPSO §II-A  —  Entropy-based population initialisation
- * (Yang et al. 2020)
- *
- * Idea: for every allele dimension d, compute how "similar"
- * a candidate value is to all already-accepted particles.
- * The similarity probability G_mN between particle m and
- * candidate N in dimension d is:
- *
- *   G_mN^d = |y_m^d - y_N^d| / (lSup[d] - lInf[d])
- *
- * The per-dimension entropy of candidate N is:
- *
- *   S_d = - sum_m ( G_mN^d * ln(G_mN^d) )
- *
- * A candidate allele is accepted only when S_d > entropyThreshold,
- * guaranteeing the initial swarm is spread across the search
- * space rather than clustered in one region.
- * ------------------------------------------------------- */
-void Swarm::initPopulationEntropy()
-{
-    /* Safety fallback: if the range of any allele is zero we
-     * cannot compute entropy and fall back to uniform random. */
-    bool canUseEntropy = true;
-    for (unsigned d = 0; d < nAllele; ++d)
-        if (lSup[d] == lInf[d]) { canUseEntropy = false; break; }
-
-    if (!canUseEntropy) {
-        std::printf("[IPSO] Warning: zero-range allele detected – "
-                    "falling back to uniform random initialisation.\n");
-        initPopulation();
-        return;
-    }
-
-    const unsigned maxRetries = 200;   /* per-allele retry cap */
-
-    for (unsigned i = 0; i < tPop; ++i) {
-        for (unsigned d = 0; d < nAllele; ++d) {
-
-            unsigned candidate = 0;
-            bool     accepted  = false;
-
-            for (unsigned attempt = 0; attempt < maxRetries; ++attempt) {
-
-                /* Draw a random candidate value for allele d */
-                candidate = (representation == BINARY)
-                    ? flip(0.5)
-                    : rndIR(lInf[d], (lSup[d] + 1) * cardinality) % (lSup[d] + 1);
-
-                /* For the very first particle there are no prior particles
-                 * to compare against, so accept immediately.             */
-                if (i == 0) { accepted = true; break; }
-
-                /* Compute the per-dimension entropy for this candidate
-                 * relative to all previously accepted particles.         */
-                double range = static_cast<double>(lSup[d] - lInf[d]);
-                double entropy = 0.0;
-
-                for (unsigned m = 0; m < i; ++m) {
-                    double diff = std::fabs(
-                        static_cast<double>(population[m].chromX[d])
-                        - static_cast<double>(candidate));
-
-                    double G = diff / range;   /* similarity probability */
-
-                    /* G == 0 means identical values: entropy contribution
-                     * is 0*ln(0) = 0 by convention (L'Hôpital), so skip. */
-                    if (G > 1e-12)
-                        entropy -= G * std::log(G);
-                }
-
-                if (entropy > entropyThreshold) { accepted = true; break; }
-            }
-
-            /* If no candidate passed the entropy test within the retry
-             * budget, use the last drawn value to avoid an infinite loop. */
-            if (!accepted)
-                std::printf("[IPSO] Entropy threshold not met for particle %u "
-                            "allele %u after %u retries; using last candidate.\n",
-                            i, d, maxRetries);
-
-            population[i].chromX[d] = candidate;
-        }
-    }
-}
-
-/* -------------------------------------------------------
- * IPSO §II-B  —  Fitness-based per-particle acceleration
- * (Yang et al. 2020)
- *
- * After each generation's evaluation:
- *   Fi = (fit_i - fit_min) / (fit_max - fit_min)
- *   ci = c1 + (c2 - c1) * Fi
- *
- * Fi == 0 -> best particle  -> ci = c1 (slow, local search)
- * Fi == 1 -> worst particle -> ci = c2 (fast, global search)
- *
- * This replaces the fixed phi1/phi2 used by standard PSO so
- * that every particle has a learning rate that is adapted to
- * its current quality, balancing exploration and exploitation.
- * ------------------------------------------------------- */
-void Swarm::updateAccelerationCoefficients()
-{
-    /* Collect fitness values from personal-best experiences */
-    double fitMin =  bestIndividualExp[0].fitness;
-    double fitMax =  bestIndividualExp[0].fitness;
-    for (unsigned i = 1; i < tPop; ++i) {
-        if (bestIndividualExp[i].fitness < fitMin) fitMin = bestIndividualExp[i].fitness;
-        if (bestIndividualExp[i].fitness > fitMax) fitMax = bestIndividualExp[i].fitness;
-    }
-
-    double range = fitMax - fitMin;
-
-    for (unsigned i = 0; i < tPop; ++i) {
-        double Fi = (range > 1e-12)
-            ? (bestIndividualExp[i].fitness - fitMin) / range
-            : 0.5;   /* all particles identical: give everyone the midpoint */
-
-        /* Note: higher fitness is *better* in this codebase, so a particle
-         * with Fi == 1.0 is the BEST.  We invert so that the best particle
-         * gets the smallest coefficient (local search) and the worst gets
-         * the largest (global search), matching the paper's intent.        */
-        population[i].ci = c1 + (c2 - c1) * (1.0 - Fi);
-    }
 }
 
 /* Evaluate all particles and update personal/social bests */
@@ -425,7 +298,6 @@ void Swarm::copyParticle(const Particle& src, Particle& dst)
     dst.numEqual   = src.numEqual;
     dst.numNoGates = src.numNoGates;
     dst.fitness    = src.fitness;
-    dst.ci         = src.ci;       /* IPSO: carry per-particle coefficient */
     dst.chromX     = src.chromX;
     dst.vi         = src.vi;
 }
@@ -476,23 +348,13 @@ void Swarm::runInfo(const std::string& file, unsigned gen)
     }
 }
 
-/* Core PSO velocity and position update
- * IPSO modification: phi1 and phi2 are both replaced by the
- * per-particle acceleration coefficient ci (Yang et al. 2020).
- * ci was computed by updateAccelerationCoefficients() just
- * before this function is called each generation.             */
+/* Core PSO velocity and position update */
 void Swarm::PSOAlgorithm(unsigned gen)
 {
     for (unsigned i = 0; i < tPop; ++i) {
-
-        /* IPSO: use this particle's individual learning rate.
-         * Random scaling [0, ci] is applied to each attraction
-         * term, matching equation (7) in the paper.           */
-        const double ci = population[i].ci;
-
         for (unsigned d = 0; d < nAllele; ++d) {
-            const double phi1p = rndF() * ci;   /* cognitive: scaled by ci */
-            const double phi2p = rndF() * ci;   /* social:    scaled by ci */
+            const double phi1p = rndF() * phi1;
+            const double phi2p = rndF() * phi2;
 
             if (gen) {
                 population[i].vi[d] +=
@@ -502,7 +364,6 @@ void Swarm::PSOAlgorithm(unsigned gen)
                     phi2p * (static_cast<double>(bestSocialExp[i].chromX[d])
                            - static_cast<double>(population[i].chromX[d]));
             } else {
-                /* Generation 0: initialise velocity with a bias toward bests */
                 if      (!bestSocialExp[i].chromX[d] && !bestIndividualExp[i].chromX[d])
                     population[i].vi[d] = -vMax;
                 else if ( bestSocialExp[i].chromX[d] &&  bestIndividualExp[i].chromX[d])

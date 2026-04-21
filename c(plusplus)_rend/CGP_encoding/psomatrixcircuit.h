@@ -61,27 +61,12 @@ public:
     unsigned nGen           = 0;    /* Max generations per run */
     unsigned nRun           = 0;    /* Number of independent runs */
     unsigned tNeigh         = 0;    /* Neighbourhood size */
-    double   phi1           = 0.0;  /* Cognitive acceleration (kept for BINARY gen-0 init) */
-    double   phi2           = 0.0;  /* Social acceleration   (kept for BINARY gen-0 init) */
+    double   phi1           = 0.0;  /* Cognitive acceleration */
+    double   phi2           = 0.0;  /* Social acceleration */
     double   vMax           = 0.0;  /* Maximum velocity */
     double   pMut           = 0.0;  /* Mutation probability */
     unsigned representation = 0;    /* BINARY=2, INTEGER_A=1, INTEGER_B=0 */
     unsigned cardinality    = 0;    /* Cardinality for integer representations */
-
-    /* ---- IPSO parameters (Yang et al. 2020) ---- */
-    /* Lower and upper bounds for the per-particle acceleration coefficient.
-     * Each particle's ci = c1 + (c2-c1)*Fi  where Fi is its normalised
-     * fitness rank (0 = best, 1 = worst).
-     * Worst particle -> ci -> c2 (aggressive global search).
-     * Best  particle -> ci -> c1 (fine-grained local search).         */
-    double   c1             = 1.5;  /* Lower bound of acceleration range */
-    double   c2             = 2.5;  /* Upper bound of acceleration range */
-
-    /* Entropy threshold for population initialisation.
-     * A candidate allele is only accepted when its contribution raises
-     * the running per-dimension entropy above this value, ensuring the
-     * initial swarm spans the search space evenly.                    */
-    double   entropyThreshold = 0.5;
 
     /* ---- Problem variables ---- */
     unsigned nVar    = 0;   /* Number of chromosome variables */
@@ -121,16 +106,6 @@ public:
 
     /* Generate the initial random population */
     void initPopulation();
-
-    /* IPSO: entropy-based population initialisation (Yang et al. 2020, §II-A)
-     * Replaces pure-random seeding; ensures alleles are spread evenly
-     * across the search space so the swarm starts with high diversity. */
-    void initPopulationEntropy();
-
-    /* IPSO: compute and assign per-particle acceleration coefficients
-     * based on individual fitness rank (Yang et al. 2020, §II-B).
-     * Must be called after evaluatePopulation() each generation.      */
-    void updateAccelerationCoefficients();
 
     /* Evaluate all particles and update experiences */
     void evaluatePopulation(unsigned generation);
