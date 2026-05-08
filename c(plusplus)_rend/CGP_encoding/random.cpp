@@ -15,17 +15,45 @@
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /* Description: Library for generating random numbers   */
 /* with specific properties, and for random shuffling.  */
+/*                                                      */
+/* The generator state is held in a `thread_local`      */
+/* std::mt19937 so OpenMP parallel regions can issue    */
+/* random numbers safely without any shared mutable     */
+/* state.  Each thread has its own independent RNG; use */
+/* initRandom(seed) inside a thread to make that        */
+/* thread's stream reproducible.                        */
 /********************************************************/
 
 #include "random.h"
 #include <algorithm>
+#include <random>
 
 namespace Random {
 
 /* -------------------------------------------------------
- * Auxiliary array for merge sort – kept file-local so it
- * replaces the old global SortElement *auxSortArray.
+ * Per-thread generator.
+ * The thread_local specifier gives each OpenMP / std::thread
+ * its own independent Mersenne Twister state, which is what
+ * makes every API below safe to call from inside a parallel
+ * region.  The sentinel `g_seeded` lets us lazily seed the
+ * first time the thread draws a number, so single-threaded
+ * callers need not change anything.
  * ------------------------------------------------------- */
+static thread_local std::mt19937 g_rng;
+static thread_local bool         g_seeded = false;
+
+static std::mt19937& rng()
+{
+    if (!g_seeded) {
+        /* Default seed: OS entropy.  Callers that want
+           reproducibility should call initRandom(seed). */
+        std::random_device rd;
+        g_rng.seed(rd());
+        g_seeded = true;
+    }
+    return g_rng;
+}
+
 static std::vector<SortElement> auxSortArray;
 
 /* -------------------------------------------------------
@@ -34,7 +62,8 @@ static std::vector<SortElement> auxSortArray;
 unsigned initRandom(unsigned seed)
 {
     unsigned realSeed = seed ? seed : static_cast<unsigned>(std::time(nullptr));
-    std::srand(realSeed);
+    g_rng.seed(realSeed);
+    g_seeded = true;
     return realSeed;
 }
 
@@ -44,12 +73,17 @@ unsigned initRandom(unsigned seed)
 
 double rndF()
 {
-    return static_cast<double>(std::rand()) / RAND_MAX;
+    /* Uniform in [0, 1].  We use uint32 division rather than
+       std::uniform_real_distribution because the latter has
+       wildly different behaviour across libstdc++ versions
+       and we want the same stream across compilers. */
+    return static_cast<double>(rng()() & 0x7fffffffu)
+         / static_cast<double>(0x7fffffff);
 }
 
-unsigned rndI(unsigned rng)
+unsigned rndI(unsigned rng_size)
 {
-    double val = rndF() * static_cast<double>(rng) - 1.0;
+    double val = rndF() * static_cast<double>(rng_size) - 1.0;
     return val < 0.0 ? 0u : static_cast<unsigned>(val);
 }
 
@@ -70,7 +104,7 @@ unsigned flip(double prob)
 
 int rndInt(int limit)
 {
-    return static_cast<int>(static_cast<double>(std::rand()) / RAND_MAX * limit);
+    return static_cast<int>(rndF() * limit);
 }
 
 int rndIntRange(int lower, int upper)
@@ -117,7 +151,12 @@ double sigmoid(double val)
 }
 
 /* -------------------------------------------------------
- * Merge sort (internal helpers are file-local)
+ * Merge sort (internal helpers are file-local).
+ *
+ * Note: this uses a module-global scratch array and is
+ * therefore NOT thread-safe.  It is only invoked from
+ * serial sections of the program and never from inside an
+ * OpenMP parallel region.
  * ------------------------------------------------------- */
 
 static void merge(std::vector<SortElement>& data,

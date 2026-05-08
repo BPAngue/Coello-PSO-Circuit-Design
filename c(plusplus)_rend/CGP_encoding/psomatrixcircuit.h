@@ -61,12 +61,19 @@ public:
     unsigned nGen           = 0;    /* Max generations per run */
     unsigned nRun           = 0;    /* Number of independent runs */
     unsigned tNeigh         = 0;    /* Neighbourhood size */
-    double   phi1           = 0.0;  /* Cognitive acceleration */
-    double   phi2           = 0.0;  /* Social acceleration */
+    double   phi1           = 0.0;  /* Cognitive acceleration (pbest) */
+    double   phi2           = 0.0;  /* Social acceleration (sbest) */
     double   vMax           = 0.0;  /* Maximum velocity */
     double   pMut           = 0.0;  /* Mutation probability */
     unsigned representation = 0;    /* BINARY=2, INTEGER_A=1, INTEGER_B=0 */
     unsigned cardinality    = 0;    /* Cardinality for integer representations */
+
+    /* ---- Parallel-Swarms-Oriented PSO (PSO-PSO) parameters ----
+       Gonsalves & Egashira (2013).  Set numSubswarms = 1 to
+       fall back to the original neighbourhood PSO.            */
+    unsigned numSubswarms   = 1;    /* K : number of sub-swarms          */
+    unsigned subswarmIters  = 0;    /* N : multi-evolutionary iters      */
+    double   phi3           = 0.0;  /* Global-best acceleration (gbest)  */
 
     /* ---- Problem variables ---- */
     unsigned nVar    = 0;   /* Number of chromosome variables */
@@ -80,6 +87,30 @@ public:
     std::vector<Particle> population;           /* Working population */
     std::vector<Particle> bestSocialExp;        /* Best social experiences */
     std::vector<Particle> bestIndividualExp;    /* Best individual experiences */
+
+    /* ---- PSO-PSO bookkeeping (only used when numSubswarms > 1) ---- */
+    std::vector<Particle> subswarmBest;         /* sbest per sub-swarm  */
+    Particle              globalBest;           /* gbest across all sbests */
+    std::vector<unsigned> subswarmStart;        /* Size K+1: particle ranges */
+
+    /* Per-sub-swarm fitness evaluator.  Each thread in the parallel
+       multi-evolutionary phase uses its own MatrixDecoder instance so
+       that internal scratch buffers do not race.  subDecoders has
+       exactly numSubswarms entries (empty when numSubswarms == 1). */
+    std::vector<MatrixDecoder> subDecoders;
+
+    /* ---- Per-sub-swarm per-inner-iter statistics (PSO-PSO) ----
+       Populated by each thread during the parallel multi-phase and
+       reduced/emitted serially after the barrier.  Outer index is the
+       sub-swarm k (size K), inner index is the multi-phase iteration n
+       (size N).  These buffers are allocated once in reserveMemory. */
+    struct InnerStat {
+        double   meanSum      = 0.0;  /* sum of pbest fitness over the sub-swarm */
+        double   squaredSum   = 0.0;  /* sum of pbest fitness^2 over the sub-swarm */
+        Particle best;                /* best pbest inside the sub-swarm   */
+        Particle worst;               /* worst pbest inside the sub-swarm  */
+    };
+    std::vector<std::vector<InnerStat>> innerStats;
 
     /* ---- Public interface ---- */
 
@@ -110,8 +141,10 @@ public:
     /* Evaluate all particles and update experiences */
     void evaluatePopulation(unsigned generation);
 
-    /* Compute fitness for a single particle */
-    void evaluateParticle(Particle& p);
+    /* Compute fitness for a single particle using the given decoder.
+       Passing the decoder explicitly makes this thread-safe when each
+       sub-swarm has its own MatrixDecoder instance. */
+    void evaluateParticle(Particle& p, MatrixDecoder& dec);
 
     /* Deep-copy src into dst */
     void copyParticle(const Particle& src, Particle& dst);
@@ -119,11 +152,48 @@ public:
     /* Apply mutation to the working population */
     void mutation();
 
+    /* Apply mutation to only the particles in sub-swarm k
+       (range [subswarmStart[k], subswarmStart[k+1]) ). */
+    void mutationSubswarm(unsigned k);
+
+    /* ---- PSO-PSO island-model helpers ----
+       These act on a single sub-swarm only (particle range
+       [subswarmStart[k], subswarmStart[k+1]) ) and must be callable
+       concurrently by different threads as long as each thread uses
+       its own sub-swarm index. */
+
+    /* Evaluate all particles in sub-swarm k, update their pbest, and
+       refresh subswarmBest[k].  `statSlot` is the index into
+       innerStats[k] where per-iter statistics are written.  `firstGen`
+       is true only for the very first multi-phase iteration of the
+       whole run and triggers unconditional pbest / sbest seeding. */
+    void evaluateSubswarm(unsigned k, unsigned statSlot, bool firstGen,
+                          MatrixDecoder& dec);
+
+    /* Standard 2-term velocity/position update, restricted to the
+       particles of sub-swarm k.  `firstGen` selects the velocity
+       initialisation branch used on the first ever iteration. */
+    void PSOAlgorithmSubswarm(unsigned k, bool firstGen);
+
+    /* Aggregate the K sub-swarm InnerStat records at multi-iteration n
+       into this->Gen (so CSV output stays identical to the original
+       serial PSO). */
+    void reduceInnerStats(unsigned n);
+
+    /* Execute one complete PSO-PSO run (island model + OpenMP). */
+    void pSwarmPSOPSO(unsigned runIndex);
+
     /* Record generation statistics and update run best/worst */
     void runInfo(const std::string& filename, unsigned generation);
 
-    /* Core PSO velocity + position update */
+    /* Core PSO velocity + position update (multi / standard phase).
+       Uses bestIndividualExp[i] (pbest) and bestSocialExp[i] (sbest). */
     void PSOAlgorithm(unsigned generation);
+
+    /* PSO-PSO single-evolutionary phase: 3-term velocity update that
+       adds an attraction toward the global best (gbest) in addition
+       to the sub-swarm best (sbest) and personal best (pbest).      */
+    void PSOSinglePhase(unsigned generation);
 
 private:
     /* Initialise variable bounds and calculate nAllele */

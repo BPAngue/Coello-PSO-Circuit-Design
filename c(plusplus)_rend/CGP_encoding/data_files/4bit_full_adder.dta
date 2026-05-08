@@ -525,5 +525,8 @@
 10 ; cardinality
 20 ; matrix rows
 20 ; matrix cols
+4 ; K = number of sub-swarms (1 disables PSO-PSO)
+10 ; N = multi-evolutionary iterations per cycle
+2.0 ; phi3 = gbest acceleration for single-evolutionary phase
 resultGen1 ; filename prefix for per-generation stats
 resultCorr1 ; filename prefix for per-run stats

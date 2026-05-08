@@ -24,10 +24,13 @@
 2.0 ; phi2
 4.0 ; vMax
 2 ; mutation percent
-2 ; representation (2 = binary, 1 = integer A, 0 = integer B)
+0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
 5 ; matrix rows
 5 ; matrix cols
+6 ; K = number of sub-swarms (1 disables PSO-PSO)
+10 ; N = multi-evolutionary iterations per cycle
+2.0 ; phi3 = gbest acceleration for single-evolutionary phase
 resultGen3 ; filename prefix for per-generation stats
 resultCorr3 ; filename prefix for per-run stats
