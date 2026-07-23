@@ -213,7 +213,7 @@ void Swarm::pSwarm(unsigned run)
         evaluatePopulation(gen);
         runInfo(fileGen, gen);
         PSOAlgorithm(gen);
-        // mutation();
+        mutation();
     }
 
     runFooter(fileGen, *this);
