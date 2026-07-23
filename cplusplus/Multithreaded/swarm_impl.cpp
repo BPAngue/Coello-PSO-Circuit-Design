@@ -172,7 +172,7 @@ void Swarm::freeMemory()
 /* Execute one complete PSO run */
 void Swarm::pSwarm(unsigned run)
 {
-    unsigned seed = initRandom(0);
+    unsigned seed = initRandom(instanceSeed + run);
     std::string fileGen;
     runFileName(run, fileGen);
 
@@ -184,7 +184,7 @@ void Swarm::pSwarm(unsigned run)
         evaluatePopulation(gen);
         runInfo(fileGen, gen);
         PSOAlgorithm(gen);
-        // mutation();
+        mutation();
     }
 
     runFooter(fileGen, *this);

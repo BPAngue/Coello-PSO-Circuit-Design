@@ -76,10 +76,11 @@ void runInstance(const std::string& inputFile, unsigned instanceIndex, unsigned 
     swarm.initVariables();
     swarm.reserveMemory();
 
-    /* Seed this thread's RNG stream. initRandom() only touches
-       the calling thread's thread_local engine, so this is safe
-       to call concurrently from every worker thread. */
-    initRandom(baseSeed + instanceIndex);
+    /* Give this instance a distinct, deterministic base seed.
+       pSwarm() combines this with the run index each time it's
+       called, so no two (instance, run) pairs anywhere ever
+       produce the same seed, regardless of timing. */
+    swarm.instanceSeed = baseSeed + instanceIndex * 1000u; // spacing avoids overlap even across many runs
 
     globalHeader(swarm.nfRun, swarm);
 
