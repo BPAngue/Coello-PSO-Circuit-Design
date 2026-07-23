@@ -20,10 +20,10 @@
 1000 ; number of generations
 20 ; number of runs
 3 ; neighborhood size
-2.0 ; phi1
-2.0 ; phi2
-4.0 ; vMax
-2 ; mutation percent
+0.8 ; phi1
+0.8 ; phi2
+3.0 ; vMax
+3 ; mutation percent
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
