@@ -1,49 +1,73 @@
+########################################################
+# CINVESTAV - IPN | PSO Combinational Circuit Design
+########################################################
+
 CXX      := g++
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -pthread
 LDFLAGS  := -pthread
 
+BUILD_DIR := build
+
+########################################################
+# Shared source files
+########################################################
+
 CORE_SRCS := circuits.cpp matrixpso.cpp random.cpp statistics.cpp
-CORE_OBJS := $(CORE_SRCS:.cpp=.o)
+CORE_OBJS := $(CORE_SRCS:%.cpp=$(BUILD_DIR)/%.o)
+
+########################################################
+# Targets
+########################################################
 
 .PHONY: all clean
 
-all: psomatrixcircuit multithreaded
+all: psomatrixcircuit.exe psomatrixcircuit_multithreaded.exe
+
+########################################################
+# Create build directory
+########################################################
+
+$(BUILD_DIR):
+	if not exist "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
 
 ########################################################
 # Original single-threaded executable
 ########################################################
 
-psomatrixcircuit: $(CORE_OBJS) psomatrixcircuit.o
+psomatrixcircuit.exe: $(CORE_OBJS) $(BUILD_DIR)/psomatrixcircuit.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 ########################################################
-# Compile psomatrixcircuit.cpp for the parallel program
+# Compile psomatrixcircuit.cpp for parallel version
 #
-# This keeps all Swarm implementations but renames
-# the original main() so it does not conflict with
-# multithreaded.cpp's main().
+# Rename main() so it does not conflict with the
+# main() in multithreaded.cpp.
 ########################################################
 
-psomatrixcircuit_lib.o: psomatrixcircuit.cpp
+$(BUILD_DIR)/psomatrixcircuit_lib.o: psomatrixcircuit.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -Dmain=pso_original_main_unused -c -o $@ $<
 
 ########################################################
 # Multithreaded executable
 ########################################################
 
-multithreaded: $(CORE_OBJS) psomatrixcircuit_lib.o multithreaded.o
+psomatrixcircuit_multithreaded.exe: \
+	$(CORE_OBJS) \
+	$(BUILD_DIR)/psomatrixcircuit_lib.o \
+	$(BUILD_DIR)/multithreaded.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 ########################################################
-# Normal .cpp -> .o rule
+# Compile .cpp -> build/.o
 ########################################################
 
-%.o: %.cpp
+$(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 ########################################################
-# Clean
+# Clean build artifacts
 ########################################################
 
 clean:
-	del /Q *.o psomatrixcircuit.exe multithreaded.exe *.csv 2>NUL
+	if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)"
+	del /Q psomatrixcircuit.exe psomatrixcircuit_multithreaded.exe 2>NUL
