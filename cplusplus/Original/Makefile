@@ -21,7 +21,7 @@ CORE_OBJS := $(CORE_SRCS:%.cpp=$(BUILD_DIR)/%.o)
 
 .PHONY: all clean
 
-all: psomatrixcircuit.exe psomatrixcircuit_multithreaded.exe
+all: psomatrixcircuit.exe multithreaded.exe
 
 ########################################################
 # Create build directory
@@ -51,7 +51,7 @@ $(BUILD_DIR)/psomatrixcircuit_lib.o: psomatrixcircuit.cpp | $(BUILD_DIR)
 # Multithreaded executable
 ########################################################
 
-psomatrixcircuit_multithreaded.exe: \
+multithreaded.exe: \
 	$(CORE_OBJS) \
 	$(BUILD_DIR)/psomatrixcircuit_lib.o \
 	$(BUILD_DIR)/multithreaded.o
@@ -70,4 +70,4 @@ $(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
 
 clean:
 	if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)"
-	del /Q psomatrixcircuit.exe psomatrixcircuit_multithreaded.exe 2>NUL
+	del /Q psomatrixcircuit.exe multithreaded.exe 2>NUL
