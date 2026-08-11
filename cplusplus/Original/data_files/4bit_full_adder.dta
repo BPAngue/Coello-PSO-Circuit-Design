@@ -514,7 +514,7 @@
 1 1 1 1 1 ; output for 111111111
 300 ; population size
 2000 ; number of generations
-100 ; number of runs
+1 ; number of runs
 3 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2
@@ -523,7 +523,7 @@
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
-20 ; matrix rows
-20 ; matrix cols
+36 ; matrix rows
+36 ; matrix cols
 resultGen ; filename prefix for per-generation stats
 resultRunSumm ; filename prefix for per-run stats

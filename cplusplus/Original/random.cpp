@@ -19,22 +19,46 @@
 
 #include "random.h"
 #include <algorithm>
-
+#include <random>
+#include <chrono>
+ 
 namespace Random {
 
 /* -------------------------------------------------------
- * Auxiliary array for merge sort – kept file-local so it
- * replaces the old global SortElement *auxSortArray.
+ * Thread local Random Number Generator (RNG) instance
  * ------------------------------------------------------- */
-static std::vector<SortElement> auxSortArray;
+thread_local std::mt19937 rng;
+
+/* -------------------------------------------------------
+ * Auxiliary array for merge sort.
+ * thread_local prevents multiple PSO threads from modifying
+ * the same temporary array.
+ * ------------------------------------------------------- */
+thread_local std::vector<SortElement> auxSortArray;
 
 /* -------------------------------------------------------
  * Seed initialisation
  * ------------------------------------------------------- */
 unsigned initRandom(unsigned seed)
 {
-    unsigned realSeed = seed ? seed : static_cast<unsigned>(std::time(nullptr));
-    std::srand(realSeed);
+    // unsigned realSeed = seed ? seed : static_cast<unsigned>(std::time(nullptr));
+    // std::srand(realSeed);
+    // return realSeed;
+
+    unsigned realSeed;
+
+    if (seed != 0) {
+        realSeed = seed;
+    } else {
+        /*
+         * Generate a seed using the current high-resolution clock.
+         * Each thread will seed it's own RNG.
+         */
+        realSeed = static_cast<unsigned>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+    }
+
+    rng.seed(realSeed);
+
     return realSeed;
 }
 
@@ -44,12 +68,20 @@ unsigned initRandom(unsigned seed)
 
 double rndF()
 {
-    return static_cast<double>(std::rand()) / RAND_MAX;
+    // return static_cast<double>(std::rand()) / RAND_MAX;
+    /*
+     * Generate a floating-point number in [0, 1)
+     */
+    return std::generate_canonical<double, 53>(rng);
 }
 
-unsigned rndI(unsigned rng)
+unsigned rndI(unsigned rngLimit)
 {
-    double val = rndF() * static_cast<double>(rng) - 1.0;
+    // double val = rndF() * static_cast<double>(rng) - 1.0;
+    // return val < 0.0 ? 0u : static_cast<unsigned>(val);
+    
+    double val = rndF() * static_cast<double>(rngLimit) - 1.0;
+
     return val < 0.0 ? 0u : static_cast<unsigned>(val);
 }
 
@@ -70,7 +102,9 @@ unsigned flip(double prob)
 
 int rndInt(int limit)
 {
-    return static_cast<int>(static_cast<double>(std::rand()) / RAND_MAX * limit);
+    // return static_cast<int>(static_cast<double>(std::rand()) / RAND_MAX * limit);
+    
+    return static_cast<int>(rndF() * static_cast<double>(limit));
 }
 
 int rndIntRange(int lower, int upper)
