@@ -53,7 +53,14 @@ struct MatrixDecoder {
     /* Evaluation temporaries */
     std::vector<unsigned>              output;
     std::vector<unsigned>              gateCount;
-    std::vector<std::vector<unsigned>> inTT;   /* [numRowsTT][numRows] */
+   //  std::vector<std::vector<unsigned>> inTT;   /* [numRowsTT][numRows] */
+
+   /* Rolling register file: one packed 32-bit word per matrix row,
+       reused for every chunk of 32 truth-table rows during evaluate().
+       Replaces the old [numRowsTT][numRows] table -- since evaluation
+       now processes one packed chunk at a time (mirroring CGP++), we
+       only ever need one row's worth of registers live at once. */
+    std::vector<unsigned> inTT;
 
     /* ---- Lifecycle ---- */
 
@@ -72,9 +79,20 @@ struct MatrixDecoder {
                 const Swarm& swarm,
                 const CircuitData& circuit);
 
-    /* Evaluate circuit against all truth-table rows.
-       Sets numEqual to the number of matching outputs. */
-    void evaluate(const std::vector<unsigned>& M,
+   //  /* Evaluate circuit against all truth-table rows.
+   //     Sets numEqual to the number of matching outputs. */
+   //  void evaluate(const std::vector<unsigned>& M,
+   //                unsigned& numEqual,
+   //                const Swarm& swarm,
+   //                const CircuitData& circuit);
+
+   /* Evaluate the circuit against the packed truth table (circuit.inputTT /
+       circuit.outputTT, one chunk of 32 rows per iteration). Sets numEqual
+       to the number of matching (row, output) pairs across all logical
+       rows -- NOT number of chunks, and padding bits in a partial last
+       chunk are masked out via circuit.chunkValidBits so they never count
+       as spurious matches. */
+   void evaluate(const std::vector<unsigned>& M,
                   unsigned& numEqual,
                   const Swarm& swarm,
                   const CircuitData& circuit);

@@ -18,7 +18,7 @@
 1 1 0 ; outputs for 1111
 300 ; population size
 2000 ; number of generations
-100 ; number of runs
+20 ; number of runs
 3 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2

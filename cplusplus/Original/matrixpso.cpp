@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <string>
 #include <algorithm>
+#include <bit>
 
 namespace PSwarm {
 
@@ -31,14 +32,15 @@ namespace PSwarm {
  * Allocates working vectors sized for the given circuit.
  * Replaces the original malloc-based reserveMatrixMemory.
  * ------------------------------------------------------- */
-void MatrixDecoder::reserve(const CircuitData& circuit)
+void MatrixDecoder::reserve(const CircuitData& /*circuit*/)
 {
     input1.assign(tMat, 0u);
     input2.assign(tMat, 0u);
     gateType.assign(tMat, 0u);
     output.assign(numRows, 0u);
     gateCount.assign(tMat, 0u);
-    inTT.assign(circuit.numRowsTT, std::vector<unsigned>(numRows, 0u));
+ 
+    inTT.assign(numRows, 0u);
 }
 
 /* -------------------------------------------------------
@@ -87,10 +89,66 @@ void MatrixDecoder::decode(const std::vector<unsigned>& M,
     }
 }
 
+// /* -------------------------------------------------------
+//  * evaluate
+//  * Evaluates the circuit for every row of the truth table
+//  * and counts how many outputs match the target.
+//  * ------------------------------------------------------- */
+// void MatrixDecoder::evaluate(const std::vector<unsigned>& M,
+//                              unsigned& numEqual,
+//                              const Swarm& swarm,
+//                              const CircuitData& circuit)
+// {
+//     numEqual = 0;
+//     decode(M, swarm, circuit);
+
+//     /* Initialise the rolling input/output table */
+//     for (unsigned i = 0; i < circuit.numRowsTT; ++i)
+//         for (unsigned j = 0; j < numRows; ++j)
+//             inTT[i][j] = (j < circuit.numInputs)
+//                             ? circuit.inputTT[i][j]
+//                             : inTT[i][j - circuit.numInputs];
+
+//     /* Simulate every column of the gate matrix */
+//     for (unsigned i = 0; i < circuit.numRowsTT; ++i) {
+//         unsigned in = 0;
+//         for (unsigned j = 0; j < tMat; ++j) {
+//             switch (gateType[j]) {
+//                 case AND:
+//                     output[in] = inTT[i][input1[j]] & inTT[i][input2[j]]; break;
+//                 case OR:
+//                     output[in] = inTT[i][input1[j]] | inTT[i][input2[j]]; break;
+//                 case NOT:
+//                 case NOT1:
+//                     output[in] = inTT[i][input1[j]] ? 0u : 1u; break;
+//                 case WIRE:
+//                 case WIRE1:
+//                     output[in] = inTT[i][input1[j]]; break;
+//                 case XOR:
+//                 case XOR1:
+//                     output[in] = inTT[i][input1[j]] ^ inTT[i][input2[j]]; break;
+//             }
+
+//             /* At the end of each column, feed outputs back as new inputs */
+//             if (!((j + 1) % numRows)) {
+//                 in = 0;
+//                 for (unsigned k = 0; k < numRows; ++k)
+//                     inTT[i][k] = output[k];
+//             } else {
+//                 ++in;
+//             }
+//         }
+
+//         /* Count matching outputs */
+//         for (unsigned j = 0; j < circuit.numOutputs; ++j)
+//             if (output[j] == circuit.outputTT[i][j]) ++numEqual;
+//     }
+// }
+
 /* -------------------------------------------------------
- * evaluate
- * Evaluates the circuit for every row of the truth table
- * and counts how many outputs match the target.
+ * evaluate  (bit-parallel, .plu-packed)
+ * Simulates the circuit once per 32-row chunk (circuit.
+ * numInstances chunks total) instead of once per row.
  * ------------------------------------------------------- */
 void MatrixDecoder::evaluate(const std::vector<unsigned>& M,
                              unsigned& numEqual,
@@ -100,46 +158,57 @@ void MatrixDecoder::evaluate(const std::vector<unsigned>& M,
     numEqual = 0;
     decode(M, swarm, circuit);
 
-    /* Initialise the rolling input/output table */
-    for (unsigned i = 0; i < circuit.numRowsTT; ++i)
-        for (unsigned j = 0; j < numRows; ++j)
-            inTT[i][j] = (j < circuit.numInputs)
-                            ? circuit.inputTT[i][j]
-                            : inTT[i][j - circuit.numInputs];
+    for (unsigned c = 0; c < circuit.numInstances; ++c) {
+        
+        // Load this chunk's packed inputs into the rolling register file
+        for (unsigned j = 0; j < numRows; ++j) {
+            inTT[j] = (j < circuit.numInputs) ? circuit.inputTT[c][j] : 0u;
+        }
 
-    /* Simulate every column of the gate matrix */
-    for (unsigned i = 0; i < circuit.numRowsTT; ++i) {
         unsigned in = 0;
         for (unsigned j = 0; j < tMat; ++j) {
-            switch (gateType[j]) {
+            switch(gateType[j]) {
                 case AND:
-                    output[in] = inTT[i][input1[j]] & inTT[i][input2[j]]; break;
+                    output[in] = inTT[input1[j]] & inTT[input2[j]];
+                    break;
                 case OR:
-                    output[in] = inTT[i][input1[j]] | inTT[i][input2[j]]; break;
+                    output[in] = inTT[input1[j]] | inTT[input2[j]];
+                    break;
                 case NOT:
                 case NOT1:
-                    output[in] = inTT[i][input1[j]] ? 0u : 1u; break;
+                    // Bitwise complement replaces the old scalar ternary check
+                    // flips all 32 packed test cases at once
+                    output[in] = ~inTT[input1[j]];
+                    break;
                 case WIRE:
                 case WIRE1:
-                    output[in] = inTT[i][input1[j]]; break;
+                    output[in] = inTT[input1[j]];
+                    break;
                 case XOR:
                 case XOR1:
-                    output[in] = inTT[i][input1[j]] ^ inTT[i][input2[j]]; break;
+                    output[in] = inTT[input1[j]] ^ inTT[input2[j]];
+                    break;
             }
 
-            /* At the end of each column, feed outputs back as new inputs */
             if (!((j + 1) % numRows)) {
                 in = 0;
-                for (unsigned k = 0; k < numRows; ++k)
-                    inTT[i][k] = output[k];
+                for (unsigned k = 0; k < numRows; ++k) {
+                    inTT[k] = output[k];
+                }
             } else {
                 ++in;
             }
         }
 
-        /* Count matching outputs */
-        for (unsigned j = 0; j < circuit.numOutputs; ++j)
-            if (output[j] == circuit.outputTT[i][j]) ++numEqual;
+        // Compare against the packed target outputs for this chunk.
+        // Matching bits = valid bits in this chunk minus popcount of the XOR diff.
+        const unsigned validBits = circuit.chunkValidBits[c];
+        const unsigned validMask = (validBits >= 32u) ? 0xFFFFFFFFu : ((1u << validBits) - 1u);
+
+        for (unsigned j = 0; j < circuit.numOutputs; ++j) {
+            unsigned diff = (output[j] ^ circuit.outputTT[c][j]) & validMask;
+            numEqual += validBits - static_cast<unsigned>(__builtin_popcount(diff));
+        }
     }
 }
 

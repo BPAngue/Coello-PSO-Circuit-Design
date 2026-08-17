@@ -51,7 +51,7 @@ class Parser:
 
 
 if __name__ == "__main__":
-    expression = "(AND1 (XOR1 (OR1 (WIRE (AND1 A B)) (OR1 (XOR1 A C) (XOR1 A C))) (OR1 (NOT1 (OR1 B A)) (WIRE (WIRE D)))) (XOR1 (OR1 (WIRE (AND1 A B)) (OR1 (XOR1 A C) (XOR1 A C))) (OR1 (NOT1 (OR1 B A)) (WIRE (WIRE D)))))"
+    expression = "(WIRE (WIRE (WIRE (XOR1 (XOR1 C A) (AND1 B B)))))"
 
     parser = Parser(expression)
     formula = parser.parse()
