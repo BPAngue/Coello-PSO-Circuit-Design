@@ -51,7 +51,7 @@ class Parser:
 
 
 if __name__ == "__main__":
-    expression = "(WIRE (WIRE (WIRE (XOR1 (XOR1 C A) (AND1 B B)))))"
+    expression = "(OR1 (OR1 (WIRE (OR1 (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D)))) (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D)))))) (WIRE (OR1 (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D)))) (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D))))))) (OR1 (WIRE (OR1 (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D)))) (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D)))))) (WIRE (OR1 (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D)))) (XOR1 (WIRE (AND1 (OR1 B B) (OR1 B B))) (AND1 (OR1 (XOR1 E D) (XOR1 E D)) (OR1 (XOR1 E D) (XOR1 E D))))))))"
 
     parser = Parser(expression)
     formula = parser.parse()
