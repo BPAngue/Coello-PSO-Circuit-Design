@@ -18,18 +18,3 @@
 4294967295 4294967295 4294967295 0 4294901760 4278255360 4042322160 3435973836 2863311530   4294967288 4294443015 4161271815 2273806215 1717986918 
 4294967295 4294967295 4294967295 4294967295 4294901760 4278255360 4042322160 3435973836 2863311530   4294967294 4294836225 4261543425 3789677025 2576980377 
 .e
-300 ; population size
-3000 ; number of generations
-5 ; number of runs
-3 ; neighborhood size
-0.8 ; phi1
-0.8 ; phi2
-3.0 ; vMax
-1 ; mutation percent
-0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
-5 ; number of gates available
-10 ; cardinality
-16 ; matrix rows
-16 ; matrix cols
-resultGen ; filename prefix for per-generation stats
-resultRunSumm ; filename prefix for per-run stats

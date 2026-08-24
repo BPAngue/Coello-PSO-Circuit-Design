@@ -91,6 +91,14 @@ bool Swarm::loadParameters(const std::string& filename)
     decoder.numRows = static_cast<unsigned>(CircuitData::readNumber(input));
     decoder.numCols = static_cast<unsigned>(CircuitData::readNumber(input));
 
+    /* Validate matrix row count against the number of circuit inputs */
+    if (circuit.numInputs > decoder.numRows) {
+        std::printf("Error: Rows in matrix (%u) must be >= number of circuit inputs (%u)\n", decoder.numRows, circuit.numInputs);
+
+        std::fclose(input);
+        return false;
+    }
+
     nfGen = CircuitData::readString(input);
     nfRun = CircuitData::readString(input) + ".csv";
 
