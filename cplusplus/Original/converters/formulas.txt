@@ -1,0 +1,3 @@
+(AND1 A F)
+(OR1 D F)
+(XOR1 (AND1 G (XOR1 B A)) E)

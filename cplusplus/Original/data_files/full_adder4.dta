@@ -29,7 +29,7 @@
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
-16 ; matrix rows
-16 ; matrix cols
+10 ; matrix rows
+10 ; matrix cols
 resultGen ; filename prefix for per-generation stats
 resultRunSumm ; filename prefix for per-run stats

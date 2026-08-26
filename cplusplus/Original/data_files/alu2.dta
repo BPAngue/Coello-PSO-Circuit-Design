@@ -1,7 +1,11 @@
-.i 5
+.i 7
 .o 3
-.p 1
-4294901760 4278255360 4042322160 3435973836 2863311530   4277723264 3783728760 2573637990 
+.p 5
+0 0 0 65280 61680 52428 43690   0 52224 41120 
+0 0 65535 65280 61680 52428 43690   0 65484 64250 
+0 65535 0 65280 61680 52428 43690   0 13260 23130 
+0 65535 65535 65280 61680 52428 43690   60544 37740 23130 
+65535 0 0 65280 61680 52428 43690   2254 14790 23130 
 .e
 300 ; population size
 1000 ; number of generations
@@ -14,7 +18,7 @@
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
-8 ; matrix rows
-8 ; matrix cols
+7 ; matrix rows
+7 ; matrix cols
 resultGen ; filename prefix for per-generation stats
 resultRunSumm ; filename prefix for per-run stats

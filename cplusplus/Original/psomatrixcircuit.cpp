@@ -412,3 +412,1239 @@ void Swarm::PSOAlgorithm(unsigned gen)
 }
 
 } // namespace PSwarm
+
+// /********************************************************/
+// /*                  CINVESTAV - IPN                     */
+// /*        Department of Electrical Engineering          */
+// /*                 Computing Section                    */
+// /*                                                      */
+// /*               Evolutionary Computation               */
+// /*                                                      */
+// /*                Erika Hernandez Luna                  */
+// /*         eluna@computacion.cs.cinvestav.mx            */
+// /*                   August 2, 2003                     */
+// /*                                                      */
+// /*         Converted to C++ - April 2026                */
+// /*                                                      */
+// /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+// /* File: psomatrixcircuit.cpp                           */
+// /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+// /* Description: Main program that applies Particle      */
+// /* Swarm Optimization to the design of logic circuits.  */
+// /********************************************************/
+
+// #include "psomatrixcircuit.h"
+// #include "random.h"
+
+// #include <cstdio>
+// #include <cmath>
+// #include <algorithm>
+// #include <string>
+
+
+// /* =======================================================
+//  * Entry point
+//  * ======================================================= */
+// int main(int argc, char* argv[])
+// {
+//     if (argc < 2) {
+
+//         std::printf(
+//             "Usage: %s <input_file>\n",
+//             argv[0]
+//         );
+
+//         return 0;
+//     }
+
+
+//     PSwarm::Swarm swarm;
+
+
+//     if (swarm.loadParameters(argv[1])) {
+
+//         swarm.initVariables();
+//         swarm.reserveMemory();
+
+//         globalHeader(
+//             swarm.nfRun,
+//             swarm
+//         );
+
+
+//         for (unsigned run = 0;
+//              run < swarm.nRun;
+//              ++run)
+//         {
+//             std::printf(
+//                 "\n\nRun %02u Started\n",
+//                 run
+//             );
+
+
+//             initStatistics(
+//                 swarm.Run
+//             );
+
+
+//             swarm.pSwarm(run);
+
+
+//             runStatistics(
+//                 swarm.nfRun,
+//                 run,
+//                 swarm
+//             );
+
+
+//             std::printf(
+//                 "\n\nRun %02u Finished\n",
+//                 run
+//             );
+//         }
+
+
+//         swarm.freeMemory();
+
+//         return 1;
+//     }
+
+
+//     return 0;
+// }
+
+
+// /* =======================================================
+//  * Swarm implementations
+//  * ======================================================= */
+
+// namespace PSwarm {
+
+
+// /* =======================================================
+//  * loadParameters
+//  *
+//  * Loads:
+//  *
+//  *     .plu truth table
+//  *     PSO parameters
+//  *     matrix parameters
+//  *
+//  * Also validates:
+//  *
+//  *     decoder.numRows >= circuit.numInputs
+//  *
+//  * so that primary inputs cannot be silently truncated.
+//  * ======================================================= */
+// bool Swarm::loadParameters(
+//     const std::string& filename)
+// {
+//     std::FILE* input =
+//         std::fopen(
+//             filename.c_str(),
+//             "r"
+//         );
+
+
+//     if (!input) {
+
+//         std::printf(
+//             "\nError: could not load data file '%s'\n",
+//             filename.c_str()
+//         );
+
+//         return false;
+//     }
+
+
+//     std::printf(
+//         "Currently loading parameters!\n"
+//     );
+
+
+//     nfInput = filename;
+
+
+//     /* ---------------------------------------------------
+//      * Load packed truth table.
+//      * --------------------------------------------------- */
+//     circuit.loadTT(input);
+
+
+//     /* ---------------------------------------------------
+//      * Load PSO parameters.
+//      * --------------------------------------------------- */
+//     tPop =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     nGen =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     nRun =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     tNeigh =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     phi1 =
+//         CircuitData::readNumber(input);
+
+//     phi2 =
+//         CircuitData::readNumber(input);
+
+//     vMax =
+//         CircuitData::readNumber(input);
+
+//     pMut =
+//         CircuitData::readNumber(input)
+//         /
+//         100.0;
+
+//     representation =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     circuit.numGates =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     cardinality =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     decoder.numRows =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+//     decoder.numCols =
+//         static_cast<unsigned>(
+//             CircuitData::readNumber(input)
+//         );
+
+
+//     /* ===================================================
+//      * VALIDATION 1
+//      *
+//      * The matrix must have at least enough rows to
+//      * represent all primary inputs.
+//      *
+//      * This prevents the old silent input truncation:
+//      *
+//      *     j < numRows
+//      *
+//      * from dropping inputs when:
+//      *
+//      *     numRows < numInputs
+//      * =================================================== */
+
+//     if (decoder.numRows == 0) {
+
+//         std::printf(
+//             "\nError: matrix rows must be greater than 0.\n"
+//         );
+
+//         std::fclose(input);
+
+//         return false;
+//     }
+
+
+//     if (circuit.numInputs > decoder.numRows) {
+
+//         std::printf(
+//             "\nError: matrix rows (%u) must be >= "
+//             "number of circuit inputs (%u).\n",
+//             decoder.numRows,
+//             circuit.numInputs
+//         );
+
+//         std::printf(
+//             "       Increase decoder.numRows in the "
+//             "parameter file.\n"
+//         );
+
+
+//         std::fclose(input);
+
+//         return false;
+//     }
+
+
+//     /* ---------------------------------------------------
+//      * Remaining output parameters.
+//      * --------------------------------------------------- */
+//     nfGen =
+//         CircuitData::readString(input);
+
+//     nfRun =
+//         CircuitData::readString(input)
+//         +
+//         ".csv";
+
+
+//     std::fclose(input);
+
+
+//     circuit.printTT();
+
+//     printParameters();
+
+//     return true;
+// }
+
+
+// /* =======================================================
+//  * printParameters
+//  * ======================================================= */
+// void Swarm::printParameters() const
+// {
+//     std::printf(
+//         "\n           Population size: %u",
+//         tPop
+//     );
+
+//     std::printf(
+//         "\n         Number of generations: %u",
+//         nGen
+//     );
+
+//     std::printf(
+//         "\n                 Number of runs: %u",
+//         nRun
+//     );
+
+//     std::printf(
+//         "\n             Neighbourhood size: %u",
+//         tNeigh
+//     );
+
+//     std::printf(
+//         "\n              PSO phi1 parameter: %.2f",
+//         phi1
+//     );
+
+//     std::printf(
+//         "\n              PSO phi2 parameter: %.2f",
+//         phi2
+//     );
+
+//     std::printf(
+//         "\n                 PSO vmax: %.2f",
+//         vMax
+//     );
+
+//     std::printf(
+//         "\n           Mutation percentage: %.2f",
+//         pMut * 100.0
+//     );
+
+//     std::printf(
+//         "\n                 Representation: %s",
+//         representation == BINARY
+//             ? "Binary"
+//             : representation == INTEGER_A
+//                 ? "Integer A"
+//                 : "Integer B"
+//     );
+
+//     std::printf(
+//         "\n      Number of available gates: %u",
+//         circuit.numGates
+//     );
+
+//     std::printf(
+//         "\n                    Cardinality: %u",
+//         cardinality
+//     );
+
+//     std::printf(
+//         "\n          Inputs in circuit: %u",
+//         circuit.numInputs
+//     );
+
+//     std::printf(
+//         "\n          Rows in the matrix: %u",
+//         decoder.numRows
+//     );
+
+//     std::printf(
+//         "\n       Columns in the matrix: %u",
+//         decoder.numCols
+//     );
+
+//     std::printf(
+//         "\n   Per-run results file: %sX.csv",
+//         nfGen.c_str()
+//     );
+
+//     std::printf(
+//         "\nGlobal results file: %s\n\n",
+//         nfRun.c_str()
+//     );
+// }
+
+
+// /* =======================================================
+//  * initVariables
+//  * ======================================================= */
+// void Swarm::initVariables()
+// {
+//     if (tNeigh > tPop)
+//         tNeigh = tPop;
+
+
+//     decoder.tMat =
+//         decoder.numCols
+//         *
+//         decoder.numRows;
+
+
+//     initBounds();
+// }
+
+
+// /* =======================================================
+//  * initBounds
+//  *
+//  * THIS IS ONE OF THE MOST IMPORTANT CHANGES.
+//  *
+//  * Old:
+//  *
+//  *     input bounds = 0 ... numRows-1
+//  *
+//  * New:
+//  *
+//  *     Column 0:
+//  *         0 ... numInputs-1
+//  *
+//  *     Column 1:
+//  *         0 ... numInputs+numRows-1
+//  *
+//  *     Column 2:
+//  *         0 ... numInputs+2*numRows-1
+//  *
+//  * etc.
+//  *
+//  * Thus each gate can connect to any previously computed
+//  * column while remaining acyclic.
+//  * ======================================================= */
+// void Swarm::initBounds()
+// {
+//     nVar =
+//         decoder.numRows
+//         *
+//         decoder.numCols
+//         *
+//         3;
+
+
+//     lInf.assign(
+//         nVar,
+//         0u
+//     );
+
+//     lSup.assign(
+//         nVar,
+//         0u
+//     );
+
+
+//     for (unsigned cell = 0;
+//          cell < decoder.tMat;
+//          ++cell)
+//     {
+//         const unsigned column =
+//             cell / decoder.numRows;
+
+
+//         /*
+//          * Number of sources that exist before this
+//          * column.
+//          */
+//         const unsigned sourceCount =
+//             circuit.numInputs
+//             +
+//             column * decoder.numRows;
+
+
+//         /*
+//          * Three chromosome variables per cell:
+//          *
+//          *     cell*3 + 0 -> input1
+//          *     cell*3 + 1 -> input2
+//          *     cell*3 + 2 -> gate type
+//          */
+//         const unsigned input1Var =
+//             cell * 3;
+
+//         const unsigned input2Var =
+//             cell * 3 + 1;
+
+//         const unsigned gateVar =
+//             cell * 3 + 2;
+
+
+//         lInf[input1Var] = 0u;
+//         lInf[input2Var] = 0u;
+//         lInf[gateVar]   = 0u;
+
+
+//         /*
+//          * At least one source must exist.
+//          *
+//          * This should always be true because the input
+//          * validation requires:
+//          *
+//          *     numRows >= numInputs
+//          *
+//          * and a valid circuit has numInputs > 0.
+//          */
+//         if (sourceCount > 0) {
+
+//             lSup[input1Var] =
+//                 sourceCount - 1;
+
+//             lSup[input2Var] =
+//                 sourceCount - 1;
+//         }
+
+
+//         lSup[gateVar] =
+//             circuit.numGates > 0
+//                 ? circuit.numGates - 1
+//                 : 0;
+//     }
+
+
+//     /* ===================================================
+//      * Calculate binary allele widths.
+//      *
+//      * Each variable gets enough bits to represent its
+//      * individual upper bound.
+//      * =================================================== */
+//     if (representation == BINARY) {
+
+//         bitVariable.resize(nVar);
+
+//         nAllele = 0;
+
+
+//         for (unsigned i = 0;
+//              i < nVar;
+//              ++i)
+//         {
+//             const unsigned maxValue =
+//                 lSup[i];
+
+
+//             /*
+//              * Number of bits required to represent
+//              * 0 ... maxValue.
+//              *
+//              * Example:
+//              *
+//              * maxValue = 4
+//              * bits = 3
+//              *
+//              * because 4 = 100.
+//              */
+//             unsigned bits = 0;
+
+//             unsigned value = maxValue;
+
+//             do {
+//                 ++bits;
+//                 value >>= 1;
+//             }
+//             while (value != 0);
+
+
+//             bitVariable[i] = bits;
+
+//             nAllele += bits;
+//         }
+//     }
+//     else {
+
+//         nAllele = nVar;
+//     }
+// }
+
+
+// /* =======================================================
+//  * reserveMemory
+//  * ======================================================= */
+// void Swarm::reserveMemory()
+// {
+//     population.assign(
+//         tPop,
+//         Particle(nAllele)
+//     );
+
+//     bestSocialExp.assign(
+//         tPop,
+//         Particle(nAllele)
+//     );
+
+//     bestIndividualExp.assign(
+//         tPop,
+//         Particle(nAllele)
+//     );
+
+
+//     reserveParticleMemory(
+//         Gen.best,
+//         true
+//     );
+
+//     reserveParticleMemory(
+//         Gen.worst,
+//         true
+//     );
+
+//     reserveParticleMemory(
+//         Run.best,
+//         true
+//     );
+
+//     reserveParticleMemory(
+//         Run.worst,
+//         true
+//     );
+
+
+//     decoder.reserve(circuit);
+// }
+
+
+// /* =======================================================
+//  * reserveParticleMemory
+//  * ======================================================= */
+// void Swarm::reserveParticleMemory(
+//     Particle& par,
+//     bool /*withChrom*/)
+// {
+//     par.vi.assign(
+//         nAllele,
+//         0.0
+//     );
+
+//     par.chromX.assign(
+//         nAllele,
+//         0u
+//     );
+// }
+
+
+// /* =======================================================
+//  * freeMemory
+//  * ======================================================= */
+// void Swarm::freeMemory()
+// {
+//     circuit.freeMemory();
+
+//     decoder.free();
+
+
+//     population.clear();
+//     bestSocialExp.clear();
+//     bestIndividualExp.clear();
+
+
+//     lInf.clear();
+//     lSup.clear();
+//     bitVariable.clear();
+// }
+
+
+// /* =======================================================
+//  * pSwarm
+//  * ======================================================= */
+// void Swarm::pSwarm(unsigned run)
+// {
+//     unsigned seed =
+//         initRandom(0);
+
+
+//     std::string fileGen;
+
+//     runFileName(
+//         run,
+//         fileGen
+//     );
+
+
+//     initPopulation();
+
+
+//     runHeader(
+//         fileGen,
+//         seed,
+//         *this
+//     );
+
+
+//     for (unsigned gen = 0;
+//          gen < nGen;
+//          ++gen)
+//     {
+//         initStatistics(Gen);
+
+//         evaluatePopulation(gen);
+
+//         runInfo(
+//             fileGen,
+//             gen
+//         );
+
+//         PSOAlgorithm(gen);
+
+//         mutation();
+//     }
+
+
+//     runFooter(
+//         fileGen,
+//         *this
+//     );
+// }
+
+
+// /* =======================================================
+//  * runFileName
+//  * ======================================================= */
+// void Swarm::runFileName(
+//     unsigned run,
+//     std::string& outName) const
+// {
+//     outName =
+//         nfGen
+//         +
+//         (run == 0
+//             ? "0"
+//             : std::to_string(run))
+//         +
+//         ".csv";
+// }
+
+
+// /* =======================================================
+//  * initPopulation
+//  * ======================================================= */
+// void Swarm::initPopulation()
+// {
+//     for (unsigned i = 0;
+//          i < tPop;
+//          ++i)
+//     {
+//         for (unsigned j = 0;
+//              j < nAllele;
+//              ++j)
+//         {
+//             population[i].chromX[j] =
+//                 (representation == BINARY)
+//                     ? flip(0.5)
+//                     : rndIR(
+//                         lInf[j],
+//                         (lSup[j] + 1)
+//                         *
+//                         cardinality
+//                     )
+//                       %
+//                       (lSup[j] + 1);
+//         }
+//     }
+// }
+
+
+// /* =======================================================
+//  * evaluatePopulation
+//  * ======================================================= */
+// void Swarm::evaluatePopulation(unsigned gen)
+// {
+//     for (unsigned i = 0;
+//          i < tPop;
+//          ++i)
+//     {
+//         evaluateParticle(
+//             population[i]
+//         );
+
+
+//         if (gen == 0
+//             ||
+//             population[i].fitness
+//                 >
+//             bestIndividualExp[i].fitness)
+//         {
+//             copyParticle(
+//                 population[i],
+//                 bestIndividualExp[i]
+//             );
+//         }
+//     }
+
+
+//     for (unsigned i = 0;
+//          i < tPop;
+//          ++i)
+//     {
+//         int p =
+//             static_cast<int>(i);
+
+//         int p0 = p;
+//         int p1 = p;
+
+
+//         for (unsigned j = 0;
+//              j < tNeigh;
+//              j += 2)
+//         {
+//             p0 =
+//                 (p0 + 1 < static_cast<int>(tPop))
+//                     ? p0 + 1
+//                     : 0;
+
+
+//             p1 =
+//                 (p1 - 1 >= 0)
+//                     ? p1 - 1
+//                     : static_cast<int>(tPop) - 1;
+
+
+//             if (bestIndividualExp[p0].fitness
+//                 >
+//                 bestIndividualExp[p].fitness)
+//             {
+//                 p = p0;
+//             }
+
+
+//             if (bestIndividualExp[p1].fitness
+//                 >
+//                 bestIndividualExp[p].fitness)
+//             {
+//                 p = p1;
+//             }
+//         }
+
+
+//         copyParticle(
+//             bestIndividualExp[p],
+//             bestSocialExp[i]
+//         );
+
+
+//         Gen.meanFitness +=
+//             bestSocialExp[i].fitness
+//             /
+//             tPop;
+
+
+//         Gen.squaredFitness +=
+//             std::pow(
+//                 bestSocialExp[i].fitness,
+//                 2.0
+//             )
+//             /
+//             tPop;
+
+
+//         if (i == 0) {
+
+//             copyParticle(
+//                 bestSocialExp[i],
+//                 Gen.best
+//             );
+
+//             copyParticle(
+//                 bestSocialExp[i],
+//                 Gen.worst
+//             );
+
+//         } else {
+
+//             if (bestSocialExp[i].fitness
+//                 >
+//                 Gen.best.fitness)
+//             {
+//                 copyParticle(
+//                     bestSocialExp[i],
+//                     Gen.best
+//                 );
+//             }
+
+
+//             if (bestSocialExp[i].fitness
+//                 <
+//                 Gen.worst.fitness)
+//             {
+//                 copyParticle(
+//                     bestSocialExp[i],
+//                     Gen.worst
+//                 );
+//             }
+//         }
+//     }
+// }
+
+
+// /* =======================================================
+//  * evaluateParticle
+//  * ======================================================= */
+// void Swarm::evaluateParticle(
+//     Particle& par)
+// {
+//     decoder.evaluate(
+//         par.chromX,
+//         par.numEqual,
+//         *this,
+//         circuit
+//     );
+
+
+//     par.numNoGates = 0;
+
+
+//     if (par.numEqual
+//         >=
+//         circuit.numTotalOutputs)
+//     {
+//         par.numGates =
+//             decoder.countGates(
+//                 circuit
+//             );
+
+
+//         par.numNoGates =
+//             decoder.tMat
+//             -
+//             par.numGates;
+//     }
+
+
+//     par.fitness =
+//         static_cast<double>(
+//             par.numEqual
+//             +
+//             par.numNoGates
+//         );
+// }
+
+
+// /* =======================================================
+//  * copyParticle
+//  * ======================================================= */
+// void Swarm::copyParticle(
+//     const Particle& src,
+//     Particle& dst)
+// {
+//     dst.numGates =
+//         src.numGates;
+
+//     dst.numEqual =
+//         src.numEqual;
+
+//     dst.numNoGates =
+//         src.numNoGates;
+
+//     dst.fitness =
+//         src.fitness;
+
+//     dst.chromX =
+//         src.chromX;
+
+//     dst.vi =
+//         src.vi;
+// }
+
+
+// /* =======================================================
+//  * mutation
+//  * ======================================================= */
+// void Swarm::mutation()
+// {
+//     for (unsigned i = 0;
+//          i < tPop;
+//          ++i)
+//     {
+//         for (unsigned j = 0;
+//              j < nAllele;
+//              ++j)
+//         {
+//             if (flip(pMut)) {
+
+//                 switch (representation) {
+
+//                     case BINARY:
+
+//                         population[i].chromX[j] =
+//                             population[i].chromX[j]
+//                                 ? 0u
+//                                 : 1u;
+
+//                         break;
+
+
+//                     case INTEGER_A:
+//                     case INTEGER_B:
+
+//                         population[i].chromX[j] =
+//                             rndIR(
+//                                 lInf[j],
+//                                 (lSup[j] + 1)
+//                                 *
+//                                 cardinality
+//                             )
+//                             %
+//                             (lSup[j] + 1);
+
+//                         break;
+//                 }
+//             }
+//         }
+//     }
+// }
+
+
+// /* =======================================================
+//  * runInfo
+//  * ======================================================= */
+// void Swarm::runInfo(
+//     const std::string& file,
+//     unsigned gen)
+// {
+//     Run.meanFitness +=
+//         Gen.meanFitness
+//         /
+//         nGen;
+
+
+//     Run.squaredFitness +=
+//         Gen.squaredFitness
+//         /
+//         nGen;
+
+
+//     if (gen == 0) {
+
+//         copyParticle(
+//             Gen.best,
+//             Run.best
+//         );
+
+//         copyParticle(
+//             Gen.worst,
+//             Run.worst
+//         );
+
+
+//         generationStats(
+//             file,
+//             gen,
+//             *this
+//         );
+
+
+//         std::printf(
+//             "\nGeneration: %04u -- Fitness: %f",
+//             gen,
+//             Gen.best.fitness
+//         );
+
+
+//         Run.generation =
+//             gen;
+
+//     } else {
+
+//         if (Gen.best.fitness
+//             >
+//             Run.best.fitness)
+//         {
+//             copyParticle(
+//                 Gen.best,
+//                 Run.best
+//             );
+
+//             Run.generation =
+//                 gen;
+//         }
+
+
+//         generationStats(
+//             file,
+//             gen,
+//             *this
+//         );
+
+
+//         std::printf(
+//             "\nGeneration: %04u -- Fitness: %f",
+//             gen,
+//             Gen.best.fitness
+//         );
+
+
+//         if (Gen.worst.fitness
+//             <
+//             Run.worst.fitness)
+//         {
+//             copyParticle(
+//                 Gen.worst,
+//                 Run.worst
+//             );
+//         }
+//     }
+// }
+
+
+// /* =======================================================
+//  * PSOAlgorithm
+//  * ======================================================= */
+// void Swarm::PSOAlgorithm(
+//     unsigned gen)
+// {
+//     for (unsigned i = 0;
+//          i < tPop;
+//          ++i)
+//     {
+//         for (unsigned d = 0;
+//              d < nAllele;
+//              ++d)
+//         {
+//             const double phi1p =
+//                 rndF() * phi1;
+
+//             const double phi2p =
+//                 rndF() * phi2;
+
+
+//             if (gen) {
+
+//                 population[i].vi[d] +=
+//                     phi1p *
+//                     (
+//                         static_cast<double>(
+//                             bestIndividualExp[i].chromX[d]
+//                         )
+//                         -
+//                         static_cast<double>(
+//                             population[i].chromX[d]
+//                         )
+//                     );
+
+
+//                 population[i].vi[d] +=
+//                     phi2p *
+//                     (
+//                         static_cast<double>(
+//                             bestSocialExp[i].chromX[d]
+//                         )
+//                         -
+//                         static_cast<double>(
+//                             population[i].chromX[d]
+//                         )
+//                     );
+
+//             } else {
+
+//                 if (!bestSocialExp[i].chromX[d]
+//                     &&
+//                     !bestIndividualExp[i].chromX[d])
+//                 {
+//                     population[i].vi[d] =
+//                         -vMax;
+
+//                 } else if (
+//                     bestSocialExp[i].chromX[d]
+//                     &&
+//                     bestIndividualExp[i].chromX[d])
+//                 {
+//                     population[i].vi[d] =
+//                         vMax;
+
+//                 } else {
+
+//                     population[i].vi[d] =
+//                         0.0;
+//                 }
+
+
+//                 population[i].vi[d] +=
+//                     phi1p *
+//                     static_cast<double>(
+//                         bestIndividualExp[i].chromX[d]
+//                     );
+
+
+//                 population[i].vi[d] +=
+//                     phi2p *
+//                     static_cast<double>(
+//                         bestSocialExp[i].chromX[d]
+//                     );
+//             }
+
+
+//             population[i].vi[d] =
+//                 std::clamp(
+//                     population[i].vi[d],
+//                     -vMax,
+//                     vMax
+//                 );
+
+
+//             const double vNorm =
+//                 sigmoid(
+//                     population[i].vi[d]
+//                 );
+
+
+//             switch (representation) {
+
+//                 case BINARY:
+
+//                     population[i].chromX[d] =
+//                         flip(vNorm);
+
+//                     break;
+
+
+//                 case INTEGER_A:
+
+//                     population[i].chromX[d] =
+//                         flip(vNorm)
+//                             ? bestSocialExp[i].chromX[d]
+//                             : population[i].chromX[d];
+
+//                     break;
+
+
+//                 case INTEGER_B:
+
+//                     population[i].chromX[d] =
+//                         flip(vNorm)
+//                             ? bestSocialExp[i].chromX[d]
+//                             : flip(1.0 - vNorm)
+//                                 ? bestIndividualExp[i].chromX[d]
+//                                 : population[i].chromX[d];
+
+//                     break;
+//             }
+//         }
+//     }
+// }
+
+// } // namespace PSwarm
