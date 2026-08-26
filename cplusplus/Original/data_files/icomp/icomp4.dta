@@ -1,0 +1,20 @@
+.i 4
+.o 18
+.p 1
+65280 61680 52428 43690   240 61455 3840 204 52275 13056 170 43605 21760 3084 50115 12336 2570 42405 20560 8738 39321 17476
+.e 
+300 ; population size
+3000 ; number of generations
+1 ; number of runs
+4 ; neighborhood size
+0.8 ; phi1
+0.8 ; phi2
+3.0 ; vMax
+1 ; mutation percent
+0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
+5 ; number of gates available
+10 ; cardinality
+18 ; matrix rows
+18 ; matrix cols
+resultGen ; filename prefix for per-generation stats
+resultRunSumm ; filename prefix for per-run stats
