@@ -4,7 +4,7 @@
 4294901760 4278255360 4042322160 3435973836 2863311530   4277723264 3783728760 2573637990 
 .e
 300 ; population size
-1000 ; number of generations
+5000 ; number of generations
 1 ; number of runs
 4 ; neighborhood size
 0.8 ; phi1
