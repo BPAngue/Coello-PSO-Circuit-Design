@@ -68,7 +68,7 @@
 .e
 300 ; population size
 3000 ; number of generations
-5 ; number of runs
+1 ; number of runs
 3 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2
