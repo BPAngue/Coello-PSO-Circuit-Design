@@ -11,7 +11,7 @@
 0.8 ; phi2
 3.0 ; vMax
 1 ; mutation percent
-1 ; representation (2 = binary, 1 = integer A, 0 = integer B)
+0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
 5 ; matrix rows
