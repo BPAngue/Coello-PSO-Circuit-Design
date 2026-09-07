@@ -3,7 +3,7 @@
 .p 1
 240 204 170   232 150 
 .e
-300 ; population size
+80 ; population size
 1000 ; number of generations
 1 ; number of runs
 3 ; neighborhood size

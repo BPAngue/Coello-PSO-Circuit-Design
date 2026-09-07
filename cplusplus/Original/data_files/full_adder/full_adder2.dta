@@ -3,10 +3,10 @@
 .p 1
 4294901760 4278255360 4042322160 3435973836 2863311530   4277723264 3783728760 2573637990 
 .e
-300 ; population size
+80 ; population size
 5000 ; number of generations
 1 ; number of runs
-8 ; neighborhood size
+4 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2
 3.0 ; vMax
