@@ -9,7 +9,7 @@
 80 ; population size
 10000 ; number of generations
 1 ; number of runs
-4 ; neighborhood size
+1 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2
 3.0 ; vMax
