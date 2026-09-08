@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -14,6 +15,7 @@
 
 namespace PSwarm {
 std::mutex consoleMutex;
+std::ofstream migrationLogFile;
 
 class Barrier {
 private:
@@ -305,20 +307,49 @@ void runIsland(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationInt
                     std::lock_guard<std::mutex> lock(consoleMutex);
 
                     if (adaptive) {
-                        std::printf("\n[MIGRATION] Island %u <- Island %u" 
+                        std::printf("\n[GEN %u] [MIGRATION] Island %u <- Island %u" 
                                 " | Tx = %.3f | Rx = %.3f"  
                                 " | pr = %.6f | %s | migrants = %zu", 
-                                islandIndex, transmitter, 
+                                gen, islandIndex, transmitter, 
                                 transmitterFitness, receiverFitness, 
                                 probability, 
                                 strategy == MigrationStrategy::BestRandom ? "best-random" : "best-worst", 
                                 migrants.size());
+
+                        if (migrationLogFile.is_open()) {
+                            migrationLogFile 
+                                << "[GEN " << gen << "] [MIGRATION] Island " << islandIndex
+                                << " <- Island " << transmitter
+                                << " | Tx = " << transmitterFitness
+                                << " | Rx = " << receiverFitness
+                                << " | pr = " << probability
+                                << " | "
+                                << (strategy == MigrationStrategy::BestRandom
+                                        ? "best-random"
+                                        : "best-worst")
+                                << " | migrants = " << migrants.size()
+                                << '\n';
+
+                            migrationLogFile.flush();
+                        }
                     } else {
-                        std::printf("\n[MIGRATION] Island %u <- Island %u"
+                        std::printf("\n[GEN %u] [MIGRATION] Island %u <- Island %u"
                                 " | best-worst | migrants = %zu",
+                                gen,
                                 islandIndex,
                                 transmitter,
                                 migrants.size());
+
+                        if (migrationLogFile.is_open()) {
+                            migrationLogFile 
+                                << "[GEN " << gen << "] [MIGRATION] Island " << islandIndex
+                                << " <- Island " << transmitter
+                                << " | best-worst"
+                                << " | migrants = " << migrants.size()
+                                << '\n';
+
+                            migrationLogFile.flush();
+                        }
                     }
                 }
 
@@ -366,7 +397,16 @@ int main(int argc, char* argv[])
     }
     
     std::filesystem::create_directories("csvs");
+    std::filesystem::create_directories("csvs/migration_logs");
+
     const std::string inputFile = argv[1];
+
+    PSwarm::migrationLogFile.open("csvs/migration_logs/migration_log.txt", std::ios::out | std::ios::trunc);
+
+    if (!PSwarm::migrationLogFile.is_open()) {
+        std::printf("Error: Unable to open migration log file for writing.\n");
+        return 1;
+    }
 
     /* n Number of islands */
     unsigned numIslands = (argc >= 3) ? static_cast<unsigned>(std::stoul(argv[2])) : 10;
@@ -464,6 +504,8 @@ int main(int argc, char* argv[])
     }
 
     std::printf("\nAll %u islands finished.\n", numIslands);
+
+    PSwarm::migrationLogFile.close();
 
     return 0;
 }
