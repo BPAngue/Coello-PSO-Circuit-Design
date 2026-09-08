@@ -3,9 +3,9 @@
 .p 1
 65280 61680 52428 43690   60544 37740 23130
 .e
-300 ; population size
+80 ; population size
 2000 ; number of generations
-20 ; number of runs
+1 ; number of runs
 3 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2
