@@ -13,9 +13,7 @@
 #include <vector>
 
 namespace PSwarm {
-
 std::mutex consoleMutex;
-std::mutex statisticsMutex;
 
 class Barrier {
 private:
@@ -55,28 +53,40 @@ enum class MigrationStrategy {
     BestRandom
 };
 
-/* Contains the migrants (particles) that we want to emigrate into another Island */
-struct MigrationMessage {
-    unsigned sourceIsland;
-    std::vector<PSwarm::Particle> migrants;
-
-    MigrationMessage() : sourceIsland(0) {}
+/* Migration Message where each island has one outgoing migration buffer */
+struct MigrationBuffer {
+    std::vector<PSwarm::Particle> particles;
 };
 
 /* Select the best particle from an Island */
-std::vector<PSwarm::Particle> selectBestMigrants(const PSwarm::Swarm& swarm, unsigned count) {
+std::vector<PSwarm::Particle> selectBestMigrants(const PSwarm::Swarm& swarm, unsigned migrationRate) {
+    if (swarm.tPop == 0 || migrationRate == 0) {
+        return {};
+    }
+
+    // number of migrants
+    unsigned count = (swarm.tPop * migrationRate) / 100;
+
+    /* If migration is enabled but population is small guarantee at least one migrant */
+    if (count == 0) {
+        count = 1;
+    }
+
     count = std::min(count, swarm.tPop);
 
+    /* Create indices */
     std::vector<unsigned> indices(swarm.tPop);
 
     for (unsigned i = 0; i < swarm.tPop; ++i) {
         indices[i] = i;
     }
 
+    /* Sort best -> worst */
     std::sort(indices.begin(), indices.end(), [&](unsigned a, unsigned b) {
         return swarm.population[a].fitness > swarm.population[b].fitness;
     });
 
+    /* Copy the best particles */
     std::vector<PSwarm::Particle> migrants;
 
     migrants.reserve(count);
@@ -84,7 +94,7 @@ std::vector<PSwarm::Particle> selectBestMigrants(const PSwarm::Swarm& swarm, uns
     for (unsigned i = 0; i < count; ++i) {
         migrants.push_back(swarm.population[indices[i]]);
     }
-
+    
     return migrants;
 }
 
@@ -94,13 +104,13 @@ void replaceWorst(PSwarm::Swarm& swarm, const std::vector<PSwarm::Particle>& mig
         return;
     }
 
+    /* Sort destination particles worst -> best */
     std::vector<unsigned> indices(swarm.tPop);
 
     for (unsigned i = 0; i < swarm.tPop; ++i) {
         indices[i] = i;
     }
 
-    /* Sort from worst to best */
     std::sort(indices.begin(), indices.end(), [&](unsigned a, unsigned b) {
         return swarm.population[a].fitness < swarm.population[b].fitness;
     });
@@ -110,7 +120,7 @@ void replaceWorst(PSwarm::Swarm& swarm, const std::vector<PSwarm::Particle>& mig
     for (unsigned i = 0; i < count; ++i) {
         const unsigned destination = indices[i];
 
-        /* Insert the complete migrant */
+        /* Replace the particle */
         swarm.population[destination] = migrants[i];
 
         /* The migrated particle becomes the particle's personal best as well */
@@ -118,6 +128,7 @@ void replaceWorst(PSwarm::Swarm& swarm, const std::vector<PSwarm::Particle>& mig
     }
 }
 
+/* Replace Random Particles */
 void replaceRandom(PSwarm::Swarm& swarm, const std::vector<PSwarm::Particle>& migrants) {
     if (migrants.empty()) {
         return;
@@ -133,7 +144,7 @@ void replaceRandom(PSwarm::Swarm& swarm, const std::vector<PSwarm::Particle>& mi
     shuffle(indices);
 
     const unsigned count = std::min(static_cast<unsigned>(migrants.size()), swarm.tPop);
-    
+
     for (unsigned i = 0; i < count; ++i) {
         const unsigned destination = indices[i];
 
@@ -144,32 +155,38 @@ void replaceRandom(PSwarm::Swarm& swarm, const std::vector<PSwarm::Particle>& mi
     }
 }
 
-double adaptiveProbability(double transmitterFitness, double receiverFitness, double temperature) {
+/* Adaptive Migration Probability */
+double calculateMigrationProbability(double transmitterFitness, double receiverFitness, double temperature) {
     if (temperature <= 0.0) {
         return 0.0;
-    }
+    } // ask about this
 
-    /* Difference between the receiver's better fitness and the transmitter's worse fitness */
+    /* Receiver is better than transmitter */
     const double delta = receiverFitness - transmitterFitness;
 
     if (delta <= 0.0) {
         return 1.0;
-    }
+    } // ask about this
 
     double probability = std::exp(-delta / temperature);
+
+    /* Numerical protection */ // ask about this
+    probability = std::clamp(probability, 0.0, 1.0);
 
     return probability;
 }
 
-/* Determine migration strategy */
-MigrationStrategy chooseAdaptiveStrategy(double transmitterFitness, double receiverFitness, double temperature, double& probability) {
+/* Choose Adaptive Strategy */
+MigrationStrategy chooseStrategy(double transmitterFitness, double receiverFitness, double temperature, double& probability) {
     if (transmitterFitness > receiverFitness) {
         probability = 1.0;
         return MigrationStrategy::BestWorst;
     }
 
-    probability = adaptiveProbability(transmitterFitness, receiverFitness, temperature);
+    /* Otherwise calculate probability of best-random */
+    probability = calculateMigrationProbability(transmitterFitness, receiverFitness, temperature);
 
+    // Random replacement strategy
     if (rndF() < probability) {
         return MigrationStrategy::BestRandom;
     }
@@ -177,111 +194,16 @@ MigrationStrategy chooseAdaptiveStrategy(double transmitterFitness, double recei
     return MigrationStrategy::BestWorst;
 }
 
-/* Run one Migration epoch */
-void performRingMigration(std::vector<std::unique_ptr<PSwarm::Swarm>>& islands, unsigned migrationRate, double& temperature, bool adaptive) {
-    const unsigned numIslands = static_cast<unsigned>(islands.size());
+/* Island thread work */
+void runIsland(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationInterval, unsigned migrationRate, 
+               bool adaptive, double initialTemperature, Barrier& migrationBarrier, 
+               std::vector<MigrationBuffer>& migrationBuffers, std::vector<std::unique_ptr<PSwarm::Swarm>>& islands) {
+    /* Initialize this island */
+    swarm.initVariables();
+    swarm.reserveMemory();
 
-    if (numIslands < 2) {
-        return;
-    }
-
-    /* Snapshot all emigrants */
-    std::vector<std::vector<PSwarm::Particle>> emigrants(numIslands);
-
-    for (unsigned i = 0; i < numIslands; ++i) {
-        unsigned count = islands[i]->tPop * migrationRate / 100;
-
-        /* Ensure at least one migrant if migration rate > 0 */
-        if (migrationRate > 0 && count == 0) {
-            count = 1;
-        }
-
-        count = std::min(count, islands[i]->tPop);
-
-        emigrants[i] = selectBestMigrants(*islands[i], count);
-    }
-
-    /* Apply ring migration */
-    for (unsigned receiver = 0; receiver < numIslands; ++receiver) {
-        /* Previous island send to this island */
-        const unsigned transmitter = (receiver + numIslands - 1) % numIslands;
-
-        const double transmitterFitness = islands[transmitter]->Gen.best.fitness;
-        const double receiverFitness = islands[receiver]->Gen.best.fitness;
-
-        double probability = 0.0;
-        
-        MigrationStrategy strategy = MigrationStrategy::BestWorst;
-
-        if (adaptive) {
-            strategy = chooseAdaptiveStrategy(transmitterFitness, receiverFitness, temperature, probability);
-        }
-
-        /* Logging */
-        {
-            std::lock_guard<std::mutex> lock(consoleMutex);
-            if (adaptive) {
-                std::printf("\n[MIGRATION] Island %u -> Island %u" 
-                            " | Tx gbest = %.3f" 
-                            " | Rx gbest = %.3f" 
-                            " | Prob = %.6f "
-                            " | Strategy = %s", 
-                            transmitter, 
-                            receiver, 
-                            transmitterFitness,
-                            receiverFitness, 
-                            probability,
-                            strategy == MigrationStrategy::BestWorst ? "best-worst" : "best-random"
-                ); 
-            } else {
-                std::printf("\n[MIGRATION] Island %u -> Island %u" 
-                            " | Strategy = best-worst", 
-                            transmitter, 
-                            receiver
-                );
-            }
-        }
-
-        /* Apply replacement */
-        if (strategy == MigrationStrategy::BestRandom) {
-            replaceRandom(*islands[receiver], emigrants[transmitter]);
-        } else {
-            replaceWorst(*islands[receiver], emigrants[transmitter]);
-        }
-    }
-
-    /* Cool down the temperature */
-    if (adaptive) {
-        const double alpha = rndF();
-        temperature *= alpha;
-
-         /*
-         * Avoid temperature becoming exactly zero.
-         */
-        if (temperature < 1.0e-12) {
-            temperature = 1.0e-12;
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(consoleMutex);
-
-            std::printf("\n[ADAPTIVE] alpha = %.6f"
-                        " | new Tem = %.10f",
-                        alpha,
-                        temperature
-            );
-        }
-    }
-}
-
-void runInstance(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationInterval, 
-                 unsigned migrationRate, bool adaptive, double initialTemperature, 
-                 Barrier& barrier, std::vector<std::unique_ptr<PSwarm::Swarm>>& islands) 
-{
-    /* Give every island a different output filename. */
-
+    /* Unique output filename */
     swarm.nfGen = "csvs/" + swarm.nfGen + "_island" + std::to_string(islandIndex);
-
     swarm.nfRun = "csvs/" + swarm.nfRun;
 
     const std::string suffix = "_island" + std::to_string(islandIndex);
@@ -292,90 +214,144 @@ void runInstance(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationI
         swarm.nfRun += suffix;
     }
 
-    /* Allocate PSO memory */
-    swarm.initVariables();
-    swarm.reserveMemory();
-
-    /* Each thread receives its own RNG. */
-    const unsigned seed = initRandom(0);
-
-    /* Temperature belongs to this island/thread. */
+    /* Initial Temperature */
     double temperature = initialTemperature;
 
     /* Independent Runs */ // this is for the number of independent runs per island not the number of generations per island
     for (unsigned run = 0; run < swarm.nRun; ++run) {
-        {
-            std::lock_guard<std::mutex> lock(consoleMutex);
-            std::printf("\n[ISLAND %u] Run %02u Started | Seed %u\n", islandIndex, run, seed);
-        }
-
-        /* Reset run statistics */
+        /* Initialize run statistics */
         initStatistics(swarm.Run);
 
-        /* Create initial population */
+        /* Generate initial population */
         swarm.initPopulation();
 
-        /* Create the per run filename */
+        /* Per-run generation file */
         std::string fileGen;
+
         swarm.runFileName(run, fileGen);
 
-        /* Write per-run header */
+        /* Seed this island. Each thread has it's own RNG state */
+        const unsigned seed = initRandom(0);
+
+        /* Run header */
         runHeader(fileGen, seed, swarm);
 
-        /* Generation loop */
-        for (unsigned gen = 0; gen < swarm.nGen; ++gen) {
-            /* reset generation statistics */
-            initStatistics(swarm.Gen);
+        {
+            std::lock_guard<std::mutex> lock(consoleMutex);
 
-            /* evaluate current population */
+            std::printf("\n[ISLAND %u] Run %u started | seed = %u", islandIndex, run, seed);
+        }
+
+        /* Generation Loop */
+        for (unsigned gen = 0; gen < swarm.nGen; ++gen) {
+            /* Evaluate Population */
+            initStatistics(swarm.Gen);
             swarm.evaluatePopulation(gen);
 
             /* Record generation information */
             swarm.runInfo(fileGen, gen);
 
-            /* Synchronize before migration */
-            barrier.wait();
-
-            /* Migration */
-            if ((gen + 1) % migrationInterval == 0) {
-                if (islandIndex == 0) {
-
-                    performRingMigration(
-                        islands,
-                        migrationRate,
-                        temperature,
-                        adaptive
-                    );
-                }
-            }
-
-            /* Wait until migration has finished */
-            barrier.wait();
-
+            /* Original PSO Update Coello */
             swarm.PSOAlgorithm(gen);
 
-            /* Mutation from the original algorithm */
+            /* Mutation */
             swarm.mutation();
+
+            /* Check migration interval */
+            const bool migrationTime = ((gen + 1) % migrationInterval == 0);
+
+            if (migrationTime) {
+                /* Re-evaluate new population produced by PSO + mutation */
+                initStatistics(swarm.Gen);
+                swarm.evaluatePopulation(gen);
+                
+                /* Step 1: Select emigrants */
+                migrationBuffers[islandIndex].particles = selectBestMigrants(swarm, migrationRate);
+
+                /* Everyone must finish creating their migration snapshot before anyone receives anything */
+                migrationBarrier.wait();
+
+                /* Step 2: Determine predecessor using Ring Topology */
+                const unsigned numIslands = static_cast<unsigned>(islands.size());
+
+                const unsigned transmitter = (islandIndex + numIslands - 1) % numIslands;
+
+                /* Gen.best represents the island's best solution after the PSO update and mutation, immediately before migration. */
+                const double transmitterFitness = islands[transmitter]->Gen.best.fitness;
+
+                const double receiverFitness = swarm.Gen.best.fitness;
+
+                /* Default strategy */
+                MigrationStrategy strategy = MigrationStrategy::BestWorst;
+                double probability = 0.0;
+
+                /* check if adaptive */
+                if (adaptive) {
+                    strategy = chooseStrategy(transmitterFitness, receiverFitness, temperature, probability);
+                }
+
+                /* Get the sender's snapshot */
+                const auto& migrants = migrationBuffers[transmitter].particles;
+
+                /* Each thread modifies only its own swarm */
+                if (strategy == MigrationStrategy::BestRandom) {
+                    replaceRandom(swarm, migrants);
+                } else {
+                    replaceWorst(swarm, migrants);
+                }
+
+                /* Log migration */
+                {
+                    std::lock_guard<std::mutex> lock(consoleMutex);
+
+                    if (adaptive) {
+                        std::printf("\n[MIGRATION] Island %u <- Island %u" 
+                                " | Tx = %.3f | Rx = %.3f"  
+                                " | pr = %.6f | %s | migrants = %zu", 
+                                islandIndex, transmitter, 
+                                transmitterFitness, receiverFitness, 
+                                probability, 
+                                strategy == MigrationStrategy::BestRandom ? "best-random" : "best-worst", 
+                                migrants.size());
+                    } else {
+                        std::printf("\n[MIGRATION] Island %u <- Island %u"
+                                " | best-worst | migrants = %zu",
+                                islandIndex,
+                                transmitter,
+                                migrants.size());
+                    }
+                }
+
+                /* Step 3: Wait until every island has completed replacement */
+                migrationBarrier.wait();
+
+                /* Step 4: Cool Temperature */
+                if (adaptive) {
+                    const double alpha = rndF();
+                    temperature *= alpha;
+
+                    /* Avoid numerical zero */
+                    if (temperature < 1.0e-12) {
+                        temperature = 1.0e-12;
+                    }
+                }
+
+                /* Step 5: Synchronize again */
+                migrationBarrier.wait();
+            }
         }
 
-        /* Finish this run */
+        /* End Run */
         runFooter(fileGen, swarm);
-
-        /* Global statistics file is shared by all islands. */
-        {
-            std::lock_guard<std::mutex> lock(statisticsMutex);
-
-            runStatistics(swarm.nfRun, run, swarm);
-        }
 
         {
             std::lock_guard<std::mutex> lock(consoleMutex);
 
-            std::printf("\n[ISLAND %u] Run %02u finished", islandIndex, run);
+            std::printf("\n[ISLAND %u] Run %u finished | Best fitness = %.3f", islandIndex, run, swarm.Run.best.fitness);
         }
     }
 
-    /* Release memory owned by this island. */
+    /* Free memory */
     swarm.freeMemory();
 }
 
@@ -388,7 +364,7 @@ int main(int argc, char* argv[])
         std::printf("Usage: %s <input_file> [num_islands] [migration_interval] [migration_rate] [adaptive] [initial_temperature]\n", argv[0]);
         return 0;
     }
-
+    
     std::filesystem::create_directories("csvs");
     const std::string inputFile = argv[1];
 
@@ -408,7 +384,6 @@ int main(int argc, char* argv[])
     double initialTemperature = (argc >= 7) ? std::stod(argv[6]) : 10.0;
 
     /* Validate parameters. */
-
     if (numIslands < 2) {
         std::printf("Error: num_islands must be >= 2.\n");
         return 1;
@@ -428,7 +403,6 @@ int main(int argc, char* argv[])
         std::printf("Error: initial_temperature must be > 0.\n");
         return 1;
     }
-
 
     std::printf(
         "\n"
@@ -470,18 +444,18 @@ int main(int argc, char* argv[])
         islands.push_back(std::move(swarm));
     }
 
-    /* Initialize one global CSV header */
-    globalHeader("csvs/impsp_global.csv", *islands[0]);
+    /* Shared migration buffers */
+    std::vector<PSwarm::MigrationBuffer> migrationBuffers(numIslands);
 
-    /* Barrier shared by all island threads */
-    PSwarm::Barrier barrier(numIslands);
+    /* Shared barrier */
+    PSwarm::Barrier migrationBarrier(numIslands);
 
     /* Launch n Islands */
     std::vector<std::thread> workers;
     workers.reserve(numIslands);
 
     for (unsigned i = 0; i < numIslands; ++i) {
-        workers.emplace_back(PSwarm::runInstance, i, std::ref(*islands[i]), migrationInterval, migrationRate, adaptive, initialTemperature, std::ref(barrier), std::ref(islands));
+        workers.emplace_back(PSwarm::runIsland, i, std::ref(*islands[i]), migrationInterval, migrationRate, adaptive, initialTemperature, std::ref(migrationBarrier), std::ref(migrationBuffers), std::ref(islands));
     }
 
     /* Wait for all sub-swarms to finish */

@@ -466,5 +466,4 @@ int main(int argc, char* argv[])
     std::printf("\nAll %u islands finished.\n", numIslands);
 
     return 0;
-
 }
