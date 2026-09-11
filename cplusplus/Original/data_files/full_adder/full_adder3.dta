@@ -9,15 +9,15 @@
 80 ; population size
 10000 ; number of generations
 1 ; number of runs
-1 ; neighborhood size
+4 ; neighborhood size
 0.8 ; phi1
 0.8 ; phi2
 3.0 ; vMax
-2 ; mutation percent
+3 ; mutation percent
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
-16 ; matrix rows
-16 ; matrix cols
+12 ; matrix rows
+12 ; matrix cols
 resultGen ; filename prefix for per-generation stats
 resultRunSumm ; filename prefix for per-run stats

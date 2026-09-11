@@ -10,11 +10,11 @@
 0.8 ; phi1
 0.8 ; phi2
 3.0 ; vMax
-2 ; mutation percent
+3 ; mutation percent
 0 ; representation (2 = binary, 1 = integer A, 0 = integer B)
 5 ; number of gates available
 10 ; cardinality
-8 ; matrix rows
-8 ; matrix cols
+5 ; matrix rows
+5 ; matrix cols
 resultGen ; filename prefix for per-generation stats
 resultRunSumm ; filename prefix for per-run stats

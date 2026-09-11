@@ -301,7 +301,7 @@ void Swarm::pSwarm(unsigned run)
         initStatistics(Gen);
         evaluatePopulation(gen);
         runInfo(fileGen, gen);
-        PSOAlgorithm(gen);
+        PSOAlgorithm(gen); 
         mutation();
     }
 
