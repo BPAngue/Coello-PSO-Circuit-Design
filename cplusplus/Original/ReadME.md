@@ -1,4 +1,4 @@
-### Inside `cplusplus/Original/`
+# `cplusplus/Original/` Folder Structure
 
 The multithreaded framework implemented here is based on the island PSO model described in:
 

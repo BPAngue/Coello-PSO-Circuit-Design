@@ -26,18 +26,8 @@ This project is based on the Particle Swarm Optimization (PSO) circuit design al
 |---|---|
 | `orig_code/` | Original Coello code (Spanish variable/function names, `circuitos.c`, `estadisticas.c`) |
 | `translated/` | English translation of the original Coello code (`circuits.c`, `statistics.c`) |
-| `cplusplus/` | C++ renditions of the codebase (refer to the folder structure in the next table) |
+| `cplusplus/` | C++ renditions of the codebase (more details of the folder structure is include inside the folder) |
 | `data_files/` | Input data files (`.dta`) used with the original Coello code |
-
-### `cplusplus/` Subfolders
-
-| Folder | Description |
-|---|---|
-| `Original/` | **Currently active implementation.** Multithreaded C++ rendition of Coello's code, built via Makefile. Visit the folder to see more details. |
-| `CGP_encoding/` | Cartesian Genetic Programming encoding variant |
-| `CGP_encoding - copy/` | Working copy/backup of the CGP encoding variant |
-| `Entropy-Based/` | Entropy-based variant of the algorithm |
-| `Multithreaded/` | Earlier multithreaded implementation |
 
 ### Translated Code (English)
 
