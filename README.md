@@ -26,14 +26,14 @@ This project is based on the Particle Swarm Optimization (PSO) circuit design al
 |---|---|
 | `orig_code/` | Original Coello code (Spanish variable/function names, `circuitos.c`, `estadisticas.c`) |
 | `translated/` | English translation of the original Coello code (`circuits.c`, `statistics.c`) |
-| `cplusplus/` | C++ renditions of the codebase (see below) |
+| `cplusplus/` | C++ renditions of the codebase (refer to the folder structure in the next table) |
 | `data_files/` | Input data files (`.dta`) used with the original Coello code |
 
 ### `cplusplus/` Subfolders
 
 | Folder | Description |
 |---|---|
-| `Original/` | **Currently active implementation.** Multithreaded C++ rendition of Coello's code, built via Makefile. See details below. |
+| `Original/` | **Currently active implementation.** Multithreaded C++ rendition of Coello's code, built via Makefile. Visit the folder to see more details. |
 | `CGP_encoding/` | Cartesian Genetic Programming encoding variant |
 | `CGP_encoding - copy/` | Working copy/backup of the CGP encoding variant |
 | `Entropy-Based/` | Entropy-based variant of the algorithm |
@@ -51,7 +51,7 @@ gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuits.c statistics.c r
 gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm
 ```
 
-### Other C++ Variants (no Makefile)
+### The Earlier Rendition of the C++ Variant (no Makefile) (NOT CURRENTLY APPLICABLE)
 
 Standard build:
 
@@ -87,6 +87,5 @@ Run the compiled program with an input data file:
 
 ```bash
 ./psomatrixcircuit inputfile.dta
-```
 
 For `cplusplus/Original/`, use the `.dta` files under `cplusplus/Original/data_files/` (packed PLU truth table format).
