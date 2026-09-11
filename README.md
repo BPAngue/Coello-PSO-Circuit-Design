@@ -1,30 +1,92 @@
-# Compilation Process
-Compile the program with all of the needed header files:
+# PSO Matrix Circuit
 
-## For Translated Code
+A Particle Swarm Optimization (PSO) implementation for circuit matrix design, based on Carlos Coello's original work. This repository includes the original Spanish-language source, an English translation, and a C++ rendition.
 
-```gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuits.c statistics.c random.c -lm```
+## Attribution
 
-## For Original Coello Code
+This project is based on the Particle Swarm Optimization (PSO) circuit design algorithm originally developed by Carlos A. Coello Coello, Erika Luna, and Arturo Hernandez-Aguirre. The `orig_code/` folder preserves the original Spanish-language implementation; `translated/` and `cplusplus/` are derivative adaptations for readability and portability. Please cite the original work if you build on or publish results using this code:
 
-```gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm```
+```bibtex
+@inbook{coello2003pso,
+  author    = {Coello, Carlos and Luna, Erika and Hernandez-Aguirre, Arturo},
+  title     = {Use of Particle Swarm Optimization to Design Combinational Logic Circuits},
+  journal   = {Lecture Notes in Computer Science},
+  volume    = {2606},
+  pages     = {398-409},
+  year      = {2003},
+  month     = {06},
+  isbn      = {978-3-540-00730-2},
+  doi       = {10.1007/3-540-36553-2_36}
+}
+```
 
-## For C++ Rendition of the Code
+## Repository Structure
 
-```g++ -O2 -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp```
+| Folder | Description |
+|---|---|
+| `orig_code/` | Original Coello code (Spanish variable/function names, `circuitos.c`, `estadisticas.c`) |
+| `translated/` | English translation of the original Coello code (`circuits.c`, `statistics.c`) |
+| `cplusplus/` | C++ renditions of the codebase (see below) |
+| `data_files/` | Input data files (`.dta`) used with the original Coello code |
 
-```g++ -std=c++17 -O3 -DNDEBUG -march=native -ffast-math -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp```
+### `cplusplus/` Subfolders
 
-If you encounter common linker errors, add -fcommon flag.
+| Folder | Description |
+|---|---|
+| `Original/` | **Currently active implementation.** Multithreaded C++ rendition of Coello's code, built via Makefile. See details below. |
+| `CGP_encoding/` | Cartesian Genetic Programming encoding variant |
+| `CGP_encoding - copy/` | Working copy/backup of the CGP encoding variant |
+| `Entropy-Based/` | Entropy-based variant of the algorithm |
+| `Multithreaded/` | Earlier multithreaded implementation |
 
-## For Translated Code
+### Translated Code (English)
 
-```gcc -fcommon -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuits.c statistics.c random.c -lm```
+```bash
+gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuits.c statistics.c random.c -lm
+```
 
-## For Original Coello Code
+### Original Coello Code (Spanish)
 
-```gcc -fcommon -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm```
+```bash
+gcc -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm
+```
 
-Run the program with the input data
+### Other C++ Variants (no Makefile)
 
-```./psomatrixcircuit inputfile.dta```
+Standard build:
+
+```bash
+g++ -O2 -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp
+```
+
+Optimized build (release mode):
+
+```bash
+g++ -std=c++17 -O3 -DNDEBUG -march=native -ffast-math -o psomatrixcircuit.exe psomatrixcircuit.cpp matrixpso.cpp circuits.cpp statistics.cpp random.cpp
+```
+
+### Troubleshooting: Linker Errors
+
+If you encounter common symbol / multiple-definition linker errors in the C builds, add the `-fcommon` flag:
+
+**Translated code:**
+
+```bash
+gcc -fcommon -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuits.c statistics.c random.c -lm
+```
+
+**Original Coello code:**
+
+```bash
+gcc -fcommon -o psomatrixcircuit psomatrixcircuit.c matrixpso.c circuitos.c estadisticas.c random.c -lm
+```
+
+## Usage
+
+Run the compiled program with an input data file:
+
+```bash
+./psomatrixcircuit inputfile.dta
+```
+
+For `cplusplus/Original/`, use the `.dta` files under `cplusplus/Original/data_files/` (packed PLU truth table format).
