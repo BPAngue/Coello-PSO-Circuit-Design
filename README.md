@@ -29,6 +29,8 @@ This project is based on the Particle Swarm Optimization (PSO) circuit design al
 | `cplusplus/` | C++ renditions of the codebase (more details of the folder structure is include inside the folder) |
 | `data_files/` | Input data files (`.dta`) used with the original Coello code |
 
+## Compilation Process
+
 ### Translated Code (English)
 
 ```bash
