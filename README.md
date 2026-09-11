@@ -2,6 +2,10 @@
 
 A Particle Swarm Optimization (PSO) implementation for circuit matrix design, based on Carlos Coello's original work. This repository includes the original Spanish-language source, an English translation, and a C++ rendition.
 
+## IMPORTANT NOTE
+
+The current active and updated code is inside the `cplusplus/Original` folder. This is the code that is currently utilized in the research study. To see more details of the folder structure, visit the folder.
+
 ## Attribution
 
 This project is based on the Particle Swarm Optimization (PSO) circuit design algorithm originally developed by Carlos A. Coello Coello, Erika Luna, and Arturo Hernandez-Aguirre. The `orig_code/` folder preserves the original Spanish-language implementation; `translated/` and `cplusplus/` are derivative adaptations for readability and portability. Please cite the original work if you build on or publish results using this code:
