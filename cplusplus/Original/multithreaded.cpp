@@ -449,13 +449,13 @@ int main(int argc, char* argv[])
         "====================================================\n"
         "Island Model Particle Swarm Optimization\n"
         "====================================================\n"
-        "Input file            : %s\n"
-        "Number of islands     : %u\n"
-        "Migration interval μ  : %u\n"
-        "Migration rate χ      : %u%%\n"
-        "Migration topology    : Unidirectional Ring\n"
-        "Migration strategy    : %s\n"
-        "Initial temperature   : %.6f\n"
+        "Input file             : %s\n"
+        "Number of islands      : %u\n"
+        "Migration interval mu  : %u\n"
+        "Migration rate chi     : %u%%\n"
+        "Migration topology     : Unidirectional Ring\n"
+        "Migration strategy     : %s\n"
+        "Initial temperature    : %.6f\n"
         "====================================================\n\n",
         inputFile.c_str(),
         numIslands,
