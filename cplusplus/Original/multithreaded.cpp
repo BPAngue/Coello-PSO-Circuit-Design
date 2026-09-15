@@ -467,7 +467,6 @@ int main(int argc, char* argv[])
         initialTemperature
     );
 
-    // Hello test
     /* Create n Independent Swarm objects.
        Each object represents one island. */
     std::vector<std::unique_ptr<PSwarm::Swarm>> islands;
