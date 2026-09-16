@@ -15,7 +15,7 @@
 
 namespace PSwarm {
 std::mutex consoleMutex;
-std::mutex islandCsvMutex;
+std::mutex islandCsvMutex; // different
 std::ofstream migrationLogFile;
 
 /* -------------------------------------------------------
@@ -255,8 +255,9 @@ void runIsland(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationInt
     /* Aggregated statistics across this island's nRun independent runs,
        rolled up into the island-summary CSV once the run loop below
        finishes. Reuses the existing Statistics struct from statistics.h
-       -- "generation" is repurposed here to record the index of the run
-       in which this island's best individual was found. */
+       -- "generation" holds the generation number (within whichever run
+       produced the island's best individual) at which that best was
+       found. */
     PSwarm::Statistics islandStats;
     initStatistics(islandStats);
 
@@ -443,7 +444,9 @@ void runIsland(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationInt
 
         if (run == 0 || swarm.Run.best.fitness > islandStats.best.fitness) {
             swarm.copyParticle(swarm.Run.best, islandStats.best);
-            islandStats.generation = run;
+            /* Generation (within this winning run) at which the best
+               individual was found, not the run index itself. */
+            islandStats.generation = swarm.Run.generation;
         }
         if (run == 0 || swarm.Run.worst.fitness < islandStats.worst.fitness) {
             swarm.copyParticle(swarm.Run.worst, islandStats.worst);
