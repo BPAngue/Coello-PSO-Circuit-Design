@@ -375,6 +375,11 @@ void runIsland(unsigned islandIndex, PSwarm::Swarm& swarm, unsigned migrationInt
         /* End Run */
         runFooter(fileGen, swarm);
 
+        if (!swarm.hasOverallBest || swarm.Run.best.fitness > swarm.overallBest.fitness) {
+            swarm.overallBest = swarm.Run.best;
+            swarm.hasOverallBest = true;
+        }
+
         {
             std::lock_guard<std::mutex> lock(consoleMutex);
 
@@ -502,6 +507,19 @@ int main(int argc, char* argv[])
     for (auto& worker : workers) {
         worker.join();
     }
+
+    unsigned bestIslandIndex = 0;
+    for (unsigned i = 0; i < numIslands; ++i) {
+        if (islands[i]->hasOverallBest && (!islands[bestIslandIndex]->hasOverallBest || islands[i]->overallBest.fitness > islands[bestIslandIndex]->overallBest.fitness)) {
+            bestIslandIndex = i;
+        }
+    }
+
+    std::printf("\n====================================================\n");
+    std::printf("GLOBAL BEST across all islands\n");
+    std::printf("Island       : %u\n", bestIslandIndex);
+    std::printf("Fitness      : %.6f\n", islands[bestIslandIndex]->overallBest.fitness);
+    std::printf("====================================================\n");
 
     std::printf("\nAll %u islands finished.\n", numIslands);
 

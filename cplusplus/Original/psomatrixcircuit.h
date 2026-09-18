@@ -51,6 +51,10 @@ public:
     Statistics    Gen;       /* Current generation statistics */
     Statistics    Run;       /* Current run statistics */
 
+    /* ---- Tracking Global Best ---- */
+    Particle      overallBest; /* Best particle found across all runs on this island */
+    bool hasOverallBest = false; /* Whether overallBest has been set yet */
+
     /* ---- File names ---- */
     std::string nfInput;     /* Input data file */
     std::string nfRun;       /* Global run statistics CSV */
